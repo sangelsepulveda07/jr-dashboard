@@ -37,10 +37,18 @@ function fmtDate(iso) {
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Mexico_City" });
 }
 
-function estimateEntradas(amountMXN) {
-  const TICKET_BASE = 1299;
-  if (!amountMXN || amountMXN <= 0) return 0;
-  return Math.max(1, Math.round(amountMXN / TICKET_BASE));
+// Cuenta "entradas" a partir del monto — el precio de boleto depende de la moneda.
+// ⚠️ AJUSTA: el precio en COP es una estimación (no lo sé con certeza) — confírmalo
+// con el precio real del boleto de Medellín y cámbialo aquí si hace falta.
+const TICKET_BASE_BY_CURRENCY = {
+  MXN: 1299,
+  USD: 47,
+  COP: 259000,
+};
+function estimateEntradas(amount, currency) {
+  const base = TICKET_BASE_BY_CURRENCY[currency] || TICKET_BASE_BY_CURRENCY.MXN;
+  if (!amount || amount <= 0) return 0;
+  return Math.max(1, Math.round(amount / base));
 }
 
 async function fetchOrdersPage(locationId, startAfter) {
@@ -74,6 +82,7 @@ async function fetchContactAttribution(contactId) {
   }
 }
 
+// Corre promesas con concurrencia limitada para no golpear el rate limit de GHL.
 async function mapLimit(items, limit, fn) {
   const out = new Array(items.length);
   let i = 0;
@@ -124,6 +133,7 @@ module.exports = async (req, res) => {
 
     const enriched = await mapLimit(newOrders, 8, async (o) => {
       const amount = o.amount || 0;
+      const currency = o.currency || "MXN";
       const attr = await fetchContactAttribution(o.contactId);
       const items = o.items || [];
       const upsellCount = items.filter((it) => /upsell/i.test(it.name || "")).length;
@@ -135,7 +145,7 @@ module.exports = async (req, res) => {
         fmtDate(o.createdAt),
         o.contactSnapshot?.name || o.contactSnapshot?.email || "Sin nombre",
         amount,
-        estimateEntradas(amount),
+        estimateEntradas(amount, currency),
         attr.source || "",
         attr.medium || "",
         attr.campaign || "",
