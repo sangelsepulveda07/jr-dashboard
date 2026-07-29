@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jony Respira · Dashboard de Pauta</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1b1c; --bg-soft:#142826; --card:#16302e; --card-border:#234441;
+    --ink:#eef4f0; --ink-dim:#a9c3bd; --breath:#ff8a5c; --breath-soft:#ffb08a;
+    --meta:#6fb7ff; --good:#7fd9a8; --bad:#ff8a8a; --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: radial-gradient(1200px 600px at 15% -10%, #1c3835 0%, transparent 60%),
+                radial-gradient(1000px 500px at 100% 0%, #12302c 0%, transparent 55%), var(--bg);
+    color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    min-height:100vh; padding:20px 14px 60px;
+  }
+  .display{font-family:Georgia,'Iowan Old Style',serif; font-weight:500; letter-spacing:-0.01em;}
+  .wrap{max-width:1180px; margin:0 auto;}
+
+  header{display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:14px;
+    margin-bottom:18px; padding-bottom:18px; border-bottom:1px solid var(--card-border);}
+  .brand{display:flex; align-items:center; gap:14px; min-width:0;}
+  .breath-mark{width:40px; height:40px; border-radius:50%; flex-shrink:0;
+    background: radial-gradient(circle at 35% 30%, var(--breath-soft), var(--breath) 60%, #b85a34 100%);
+    box-shadow: 0 0 0 6px rgba(255,138,92,0.12), 0 0 0 12px rgba(255,138,92,0.06);
+    animation: breathe 5.5s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{transform:scale(0.86);} 50%{transform:scale(1);}}
+  @media (prefers-reduced-motion: reduce){ .breath-mark{animation:none;} }
+  h1{font-size:1.3rem; margin:0; line-height:1.2;}
+  .eyebrow{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--breath-soft); margin:0 0 3px;}
+  .meta-info{text-align:right; font-size:0.78rem; color:var(--ink-dim);}
+  .meta-info span{display:block;}
+  #live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ink-dim); margin-right:6px;}
+  #live-dot.ok{background:var(--good); box-shadow:0 0 6px var(--good);}
+  #live-dot.off{background:var(--breath);}
+  #live-dot.cache{background:var(--meta); box-shadow:0 0 6px var(--meta);}
+
+  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+  .tab{background:var(--card); border:1px solid var(--card-border); color:var(--ink-dim);
+    padding:8px 16px; border-radius:99px; font-size:0.82rem; cursor:pointer; font-weight:600;}
+  .tab.active{background:var(--breath); color:#241209; border-color:var(--breath);}
+
+  .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    background:var(--card); border:1px solid var(--card-border); border-radius:14px;
+    padding:10px 14px; margin-bottom:22px; font-size:0.82rem; color:var(--ink-dim);}
+  .period-btn{background:var(--bg-soft); border:1px solid var(--card-border); color:var(--ink-dim);
+    padding:6px 12px; border-radius:8px; font-size:0.78rem; cursor:pointer;}
+  .period-btn.active{background:var(--meta); color:#0a1e1c; border-color:var(--meta); font-weight:700;}
+  .controls input[type=date]{background:var(--bg-soft); border:1px solid var(--card-border); color:var(--ink);
+    border-radius:8px; padding:5px 8px; font-size:0.78rem;}
+  .controls input[type=number]{width:72px; background:var(--bg-soft); border:1px solid var(--card-border); color:var(--ink);
+    border-radius:8px; padding:5px 8px; font-size:0.78rem;}
+  .fx-wrap{display:flex; align-items:center; gap:10px; margin-left:auto; flex-wrap:wrap;}
+  .btn{background:var(--breath); color:#241209; border:none; border-radius:10px;
+    padding:7px 14px; font-weight:700; font-size:0.78rem; cursor:pointer;}
+
+  .kpis{display:grid; grid-template-columns:repeat(7,1fr); gap:12px; margin-bottom:22px;}
+  @media(max-width:1200px){ .kpis{grid-template-columns:repeat(4,1fr);} }
+  @media(max-width:820px){ .kpis{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:480px){ .kpis{grid-template-columns:1fr;} }
+  .kpi{background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:16px 16px 14px;}
+  .kpi .label{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:6px;}
+  .kpi .value{font-size:1.45rem; font-weight:700;}
+  .kpi .sub{font-size:0.72rem; color:var(--ink-dim); margin-top:4px;}
+  .kpi.roas .value{color:var(--breath-soft);}
+  .kpi.usd .value{color:var(--meta);}
+
+  .goals{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:22px;}
+  @media(max-width:820px){ .goals{grid-template-columns:1fr;} }
+  .goal{background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:18px 20px;}
+  .goal h3{margin:0 0 10px; font-size:0.85rem;}
+  .bar-track{height:10px; border-radius:99px; background:var(--bg-soft); overflow:hidden; margin:8px 0 10px; position:relative;}
+  .bar-fill{height:100%; border-radius:99px; background:linear-gradient(90deg,var(--breath),var(--breath-soft));}
+  .bar-marker{position:absolute; top:-3px; width:2px; height:16px; background:var(--ink-dim);}
+  .goal-nums{display:flex; justify-content:space-between; font-size:0.78rem; color:var(--ink-dim); flex-wrap:wrap; gap:4px;}
+  .goal-nums b{color:var(--ink); font-size:0.95rem;}
+
+  .grid2{display:grid; grid-template-columns:1.3fr 1fr; gap:16px; margin-bottom:16px;}
+  @media(max-width:900px){ .grid2{grid-template-columns:1fr;} }
+  .grid3{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;}
+  @media(max-width:820px){ .grid3{grid-template-columns:1fr;} }
+  .panel, .kpi, .goal{min-width:0;}
+  .panel{background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:18px 18px 16px;}
+  .panel h2{font-size:0.92rem; margin:0 0 4px; font-weight:600;}
+  .panel .desc{font-size:0.75rem; color:var(--ink-dim); margin:0 0 14px;}
+  .chart-wrap{position:relative; width:100%;}
+
+  table{width:100%; border-collapse:collapse; font-size:0.8rem;}
+  th{text-align:left; color:var(--ink-dim); font-weight:500; font-size:0.66rem; text-transform:uppercase;
+    letter-spacing:0.04em; padding:6px 6px; border-bottom:1px solid var(--card-border); white-space:nowrap;}
+  td{padding:8px 6px; border-bottom:1px solid rgba(255,255,255,0.04); white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  .num{text-align:right; font-variant-numeric:tabular-nums;}
+  .table-scroll{overflow-x:auto;}
+  .pill{display:inline-block; padding:2px 8px; border-radius:99px; font-size:0.66rem; font-weight:700;}
+  .pill.good{background:rgba(127,217,168,0.15); color:var(--good);}
+  .pill.mid{background:rgba(255,138,92,0.15); color:var(--breath-soft);}
+  .pill.zero{background:rgba(255,255,255,0.06); color:var(--ink-dim);}
+
+  footer{margin-top:26px; font-size:0.72rem; color:var(--ink-dim); line-height:1.6;}
+  footer b{color:var(--ink);}
+  .skeleton{opacity:0.35; filter:blur(1px);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="breath-mark"></div>
+      <div><p class="eyebrow">Jony Respira · Tráfico Meta Ads</p><h1 class="display">Dashboard de Pauta</h1></div>
+    </div>
+    <div class="meta-info">
+      <span><span id="live-dot"></span><span id="live-label">cargando…</span></span>
+      <span id="updated-label">—</span>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="controls">
+    <div id="period-btns" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+    <span id="custom-range" style="display:none; gap:6px; align-items:center;">
+      <input type="date" id="date-from"> → <input type="date" id="date-to">
+    </span>
+    <div class="fx-wrap">
+      <label style="display:flex; align-items:center; gap:6px;">TC MXN→USD <input type="number" id="fx-mxn" value="18.5" step="0.1" min="1"></label>
+      <label style="display:flex; align-items:center; gap:6px;">TC COP→USD <input type="number" id="fx-cop" value="4100" step="10" min="100"></label>
+      <button class="btn" onclick="loadData(true)">↻ Actualizar</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis-block">
+    <div class="kpi"><div class="label" id="kpi-ventas-label">Ventas</div><div class="value" id="kpi-mxn">—</div><div class="sub" id="kpi-mxn-usd">—</div></div>
+    <div class="kpi roas"><div class="label">Entradas</div><div class="value" id="kpi-entradas">—</div><div class="sub">boletos vendidos, período seleccionado</div></div>
+    <div class="kpi"><div class="label">Upsells</div><div class="value" id="kpi-upsells">—</div><div class="sub" id="kpi-upsells-sub">—</div></div>
+    <div class="kpi"><div class="label"># Ventas · Ticket prom.</div><div class="value" id="kpi-count">—</div><div class="sub" id="kpi-ticket">—</div></div>
+    <div class="kpi usd"><div class="label">Inversión Meta</div><div class="value" id="kpi-spend">—</div><div class="sub" id="kpi-spend-sub">campaña filtrada</div></div>
+    <div class="kpi roas"><div class="label">ROAS cruzado</div><div class="value" id="kpi-roas">—</div></div>
+    <div class="kpi usd"><div class="label">CAC</div><div class="value" id="kpi-cac-main">—</div><div class="sub">costo por entrada, período seleccionado</div></div>
+  </div>
+
+  <div class="goals" id="goals"></div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>📅 Ventas y boletos por día</h2>
+      <p class="desc">Barras = ventas (USD) · el número arriba de cada barra es la cantidad de ventas ese día · línea = gasto Meta (USD)</p>
+      <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>🎯 Ventas por fuente</h2>
+      <p class="desc">Según atribución UTM de GHL</p>
+      <div class="chart-wrap"><canvas id="sourceChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div class="panel">
+      <h2>🎯 ROAS por día</h2>
+      <p class="desc">Ventas (USD) ÷ gasto Meta (USD) de cada día</p>
+      <div class="chart-wrap"><canvas id="roasChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>💵 CAC por día</h2>
+      <p class="desc">Costo por entrada (USD) de cada día</p>
+      <div class="chart-wrap"><canvas id="cacChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h2>🗓️ Detalle diario</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Fecha</th><th class="num"># Ventas</th><th class="num">Entradas</th><th class="num" id="th-ventas-local">Boletos Ventas</th><th class="num">Gasto (USD)</th><th class="num">ROAS</th><th class="num">CAC/entrada (USD)</th></tr></thead>
+      <tbody id="daily-table"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h2 id="ads-title">🎬 Anuncios con ventas en el período</h2>
+    <p class="desc">Gasto, clics y ROAS calculados solo sobre el rango de fecha seleccionado arriba — no el acumulado total. Solo se muestran anuncios con al menos una venta atribuida en ese rango.</p>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Anuncio</th><th class="num">Gasto (USD)</th><th class="num">Clics</th><th class="num">Ventas atrib.</th><th class="num"># Ventas</th><th class="num">ROAS</th></tr></thead>
+      <tbody id="ads-table"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>🚀 Cuánto podemos escalar para llegar a la meta</h2>
+      <p class="desc" id="scale-desc"></p>
+      <div id="scale-body"></div>
+    </div>
+    <div class="panel">
+      <h2 id="adsets-title">🏆 Conjuntos con ventas en el período</h2>
+      <p class="desc">Gasto y ROAS calculados solo sobre el rango de fecha seleccionado. Solo se muestran conjuntos con al menos una entrada atribuida en ese rango.</p>
+      <div class="table-scroll">
+      <table>
+        <thead><tr><th>Conjunto</th><th class="num">Gasto (USD)</th><th class="num">Entradas atrib.</th><th class="num">CAC/entrada</th><th class="num">ROAS</th></tr></thead>
+        <tbody id="adsets-table"></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <footer id="foot-note"></footer>
+</div>
+
+<script>
+// ============================================================================
+// CONFIGURACIÓN DE EVENTOS
+// matchKeywords: se usan para saber a qué evento pertenece cada venta de GHL,
+// comparando (en minúsculas) contra el nombre del producto de la orden y contra
+// el campo utm_campaign. Ajusta estas palabras si el nombre real del producto
+// en GHL es distinto.
+// ============================================================================
+const EVENTS = [
+  {
+    id: 'cdmx16ago',
+    label: '16 Ago · CDMX',
+    currency: 'MXN',
+    matchKeywords: ['cdmx', '16 ago', '16ago'],
+    campaigns: [{ id:'120257677827110386', name:'CDMX16AGO_Ventas_TesteoOleada1' }],
+    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    metaAdsets: ['CDMX16AGO_TestA_RMKT','CDMX16AGO_TestB_LAL','CDMX16AGO_TestC_Advantage'],
+    metaAds: [
+      {name:'CDMX16AGO_BASE5H_VID_01', adset:'CDMX16AGO_TestB_LAL'},
+      {name:'CDMX16AGO_BASE5H_VID_02', adset:'CDMX16AGO_TestB_LAL'},
+      {name:'CDMX16AGO_BASE5H_VID_03', adset:'CDMX16AGO_TestB_LAL'},
+      {name:'CDMX16AGO_BASE5H_VID_06', adset:'CDMX16AGO_TestB_LAL'},
+      {name:'CDMX16AGO_GIRA5H_VID_01', adset:'CDMX16AGO_TestA_RMKT'},
+      {name:'CDMX16AGO_GIRA5H_VID_02', adset:'CDMX16AGO_TestA_RMKT'},
+      {name:'CDMX16AGO_GIRA5H_VID_03', adset:'CDMX16AGO_TestA_RMKT'},
+      {name:'CDMX16AGO_GIRA5H_VID_06', adset:'CDMX16AGO_TestA_RMKT'},
+      {name:'CDMX16AGO_GIRA5H_VID_07', adset:'CDMX16AGO_TestC_Advantage'},
+    ],
+  },
+  {
+    id: 'mty23ago',
+    label: '23 Ago · MTY',
+    currency: 'MXN',
+    matchKeywords: ['mty', 'monterrey', '23 ago', '23ago'],
+    campaigns: [{ id:'120258012257390386', name:'MTY23AGO_Ventas_TesteoOleada1' }],
+    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    metaAdsets: ['MTY23AGO_TestA_RMKT','MTY23AGO_TestB_LAL','MTY23AGO_TestC_Advantage'],
+    metaAds: [
+      {name:'MTY23AGO_GIRA5H_VID_SINFECHA', adset:'MTY23AGO_TestA_RMKT'},
+      {name:'MTY23AGO_GIRA5H_VID_VSL_VERTICAL', adset:'MTY23AGO_TestA_RMKT'},
+      {name:'MTY23AGO_GIRA5H_VID_02', adset:'MTY23AGO_TestC_Advantage'},
+      {name:'MTY23AGO_BASE5H_VID_01', adset:'MTY23AGO_TestB_LAL'},
+      {name:'MTY23AGO_BASE5H_VID_04', adset:'MTY23AGO_TestB_LAL'},
+      {name:'MTY23AGO_GIRA5H_IMG_02', adset:'MTY23AGO_TestC_Advantage'},
+      {name:'MTY23AGO_BASE5H_VID_02', adset:'MTY23AGO_TestB_LAL'},
+      {name:'MTY23AGO_GIRA5H_VID_01', adset:'MTY23AGO_TestC_Advantage'},
+      {name:'MTY23AGO_BASE5H_VID_03', adset:'MTY23AGO_TestB_LAL'},
+      {name:'MTY23AGO_GIRA5H_VID_03', adset:'MTY23AGO_TestC_Advantage'},
+      {name:'MTY23AGO_GIRA5H_IMG_01', adset:'MTY23AGO_TestC_Advantage'},
+    ],
+  },
+  {
+    id: 'medellin29ago',
+    label: '29 Ago · Medellín',
+    currency: 'COP',
+    matchKeywords: ['medellin', 'medellín', '29 ago', '29ago'],
+    campaigns: [{ id:'120258063523740386', name:'MEDELLIN29AGO_Ventas_TesteoOleada1' }],
+    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    metaAdsets: ['MEDELLIN29AGO_TestA_RMKT','MEDELLIN29AGO_TestB_LAL','MEDELLIN29AGO_TestC_Advantage'],
+    metaAds: [
+      {name:'MEDELLIN29AGO_GIRA5H_VID_1', adset:'MEDELLIN29AGO_TestA_RMKT'},
+      {name:'MEDELLIN29AGO_GIRA5H_VID_2', adset:'MEDELLIN29AGO_TestA_RMKT'},
+      {name:'MEDELLIN29AGO_GIRA5H_VID_3', adset:'MEDELLIN29AGO_TestA_RMKT'},
+      {name:'MEDELLIN29AGO_GIRA5H_VID_4', adset:'MEDELLIN29AGO_TestA_RMKT'},
+      {name:'MEDELLIN29AGO_AD3_SINFECHA', adset:'MEDELLIN29AGO_TestB_LAL'},
+      {name:'MEDELLIN29AGO_VSL_VERTICAL', adset:'MEDELLIN29AGO_TestB_LAL'},
+      {name:'MEDELLIN29AGO_GIRA5H_VID_01', adset:'MEDELLIN29AGO_TestC_Advantage'},
+      {name:'MEDELLIN29AGO_GIRA5H_VID_02', adset:'MEDELLIN29AGO_TestC_Advantage'},
+      {name:'MEDELLIN29AGO_GIRA5H_VID_03', adset:'MEDELLIN29AGO_TestC_Advantage'},
+    ],
+  },
+];
+
+// ⚠️ AJUSTA: mismo location para los 3 eventos (confirmado). Si cambia, muévelo dentro de cada evento.
+const GHL_LOCATION_ID = 'JevcH97yOMXW9tCaKWpT';
+
+const PERIODS = [
+  {id:'today', label:'Hoy'}, {id:'yesterday', label:'Ayer'},
+  {id:'7d', label:'Últimos 7 días'}, {id:'14d', label:'Últimos 14 días'}, {id:'30d', label:'Últimos 30 días'},
+  {id:'week', label:'Esta semana'}, {id:'month', label:'Este mes'}, {id:'lastmonth', label:'Mes pasado'},
+  {id:'all', label:'Todo el tiempo'}, {id:'custom', label:'📆 Personalizado'}
+];
+
+const ALL_CAMPAIGN_IDS = EVENTS.flatMap(e => e.campaigns.map(c => c.id));
+const CACHE_KEY = 'jonyDashboardCache_v2';
+const CACHE_TTL_MS = 4 * 60 * 1000; // 4 min: dentro de esta ventana no vuelve a pedir Meta
+
+let activeEventId = EVENTS[0].id;
+let activePeriod = 'all';
+let dailyChartRef, sourceChartRef, roasChartRef, cacChartRef;
+let store = { metaSpend:{}, adDaily:{}, adsetDaily:{}, sales:[] };
+
+function parseUS(dateStr){ return new Date(dateStr + ' 00:00:00'); }
+function fxFor(ev){ return ev.currency === 'COP' ? parseFloat(document.getElementById('fx-cop').value)||4100 : parseFloat(document.getElementById('fx-mxn').value)||18.5; }
+function fmtLocal(v, currency){ return '$'+v.toLocaleString('es-MX',{maximumFractionDigits:0})+' '+currency; }
+
+function readCache(){
+  try{ const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); return c; }catch(e){ return null; }
+}
+function writeCache(){
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ ...store, ts: Date.now() })); }catch(e){}
+}
+
+function matchesEvent(row, ev){
+  const product = (row[11] || '').toLowerCase();
+  const campaign = (row[6] || '').toLowerCase();
+  return ev.matchKeywords.some(kw => product.includes(kw) || campaign.includes(kw));
+}
+
+function initTabs(){
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  EVENTS.forEach(ev=>{
+    const b = document.createElement('button');
+    b.className = 'tab' + (ev.id===activeEventId ? ' active':'');
+    b.textContent = ev.label;
+    // Cambiar de tab NO dispara red — todo ya está cargado. Solo re-renderiza.
+    b.onclick = ()=>{ activeEventId = ev.id; initTabs(); renderCurrent(); };
+    tabsEl.appendChild(b);
+  });
+}
+
+function initPeriodButtons(){
+  const wrap = document.getElementById('period-btns');
+  wrap.innerHTML = '';
+  PERIODS.forEach(p=>{
+    const b = document.createElement('button');
+    b.className = 'period-btn' + (p.id===activePeriod ? ' active':'');
+    b.textContent = p.label;
+    b.onclick = ()=>{
+      activePeriod = p.id;
+      document.getElementById('custom-range').style.display = p.id==='custom' ? 'flex':'none';
+      initPeriodButtons();
+      if(p.id!=='custom') renderCurrent();
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function getRange(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  let from, to;
+  switch(activePeriod){
+    case 'today': from=new Date(today); to=new Date(today); break;
+    case 'yesterday': from=new Date(today); from.setDate(from.getDate()-1); to=new Date(from); break;
+    case '7d': to=new Date(today); from=new Date(today); from.setDate(from.getDate()-6); break;
+    case '14d': to=new Date(today); from=new Date(today); from.setDate(from.getDate()-13); break;
+    case '30d': to=new Date(today); from=new Date(today); from.setDate(from.getDate()-29); break;
+    case 'week': { const day=(today.getDay()+6)%7; from=new Date(today); from.setDate(today.getDate()-day); to=new Date(today); break; }
+    case 'month': from=new Date(today.getFullYear(), today.getMonth(),1); to=new Date(today); break;
+    case 'lastmonth': from=new Date(today.getFullYear(), today.getMonth()-1,1); to=new Date(today.getFullYear(), today.getMonth(),0); break;
+    case 'custom': {
+      const f=document.getElementById('date-from').value, t=document.getElementById('date-to').value;
+      from = f? new Date(f+'T00:00:00') : new Date(2000,0,1);
+      to = t? new Date(t+'T00:00:00') : new Date(today);
+      break;
+    }
+    default: from=new Date(2000,0,1); to=new Date(2100,0,1);
+  }
+  to.setHours(23,59,59,999);
+  return {from, to};
+}
+
+function sumInRange(dailyMap, name, dayKeys){
+  const rec = dailyMap?.[name];
+  if(!rec) return {spend:0, clicks:0};
+  let spend=0, clicks=0;
+  dayKeys.forEach(k=>{ if(rec[k]){ spend+=rec[k].spend; clicks+=rec[k].clicks; } });
+  return {spend, clicks};
+}
+
+// ============================================================================
+// CARGA — todo en paralelo, UNA sola vez. Cambiar de tab o de período después
+// no vuelve a tocar la red, solo re-filtra/re-dibuja con lo que ya está en memoria.
+// ============================================================================
+async function loadData(forceFresh){
+  const dot=document.getElementById('live-dot'), label=document.getElementById('live-label');
+
+  const cached = !forceFresh ? readCache() : null;
+  if(cached && cached.ts && (Date.now()-cached.ts < CACHE_TTL_MS)){
+    store = cached;
+    dot.className='cache'; label.textContent='desde caché local (actualiza automático cada 4 min)';
+    document.getElementById('updated-label').textContent = 'Actualizado: ' + new Date(cached.ts).toLocaleString('es-MX');
+    renderCurrent();
+    // refresca en segundo plano sin bloquear la UI
+    fetchFresh(false);
+    return;
+  }
+  dot.className=''; label.textContent='conectando…';
+  await fetchFresh(true);
+}
+
+async function fetchFresh(blocking){
+  const dot=document.getElementById('live-dot'), label=document.getElementById('live-label');
+  const campaignIds = ALL_CAMPAIGN_IDS.join(',');
+  const knownIds = (store.sales || []).map(r=>r[10]).filter(Boolean);
+
+  try{
+    const [spendR, adR, adsetR, ghlR] = await Promise.all([
+      fetch(`/api/meta-spend-jr?campaignIds=${campaignIds}&_=${Date.now()}`).then(r=>r.json()),
+      fetch(`/api/meta-breakdown-jr?campaignIds=${campaignIds}&level=ad&_=${Date.now()}`).then(r=>r.json()),
+      fetch(`/api/meta-breakdown-jr?campaignIds=${campaignIds}&level=adset&_=${Date.now()}`).then(r=>r.json()),
+      fetch(`/api/ghl-orders-jr?locationId=${GHL_LOCATION_ID}&knownIds=${knownIds.join(',')}&_=${Date.now()}`).then(r=>r.json()),
+    ]);
+
+    if(ghlR.error) throw new Error(ghlR.error);
+
+    // gasto diario por campaña -> lo indexamos por nombre de campaña para leerlo fácil
+    const metaSpend = {};
+    EVENTS.forEach(ev=>{
+      const camp = ev.campaigns[0];
+      metaSpend[ev.id] = spendR?.[camp.id]?.daily || {};
+    });
+
+    const validSet = new Set(ghlR.validIds || []);
+    const keptCached = (store.sales || []).filter(r=>validSet.has(r[10]));
+    const merged = [...keptCached, ...(ghlR.newSales||[])].filter(r=>r[0] && r[0]!=='Invalid Date');
+
+    store = { metaSpend, adDaily: adR?.daily||{}, adsetDaily: adsetR?.daily||{}, sales: merged };
+    writeCache();
+
+    dot.className='ok';
+    const nuevos = ghlR.fetchedNew||0;
+    label.textContent = `conectado en vivo (GHL + Meta)${nuevos>0?' · '+nuevos+' ventas nuevas':' · sin cambios'}`;
+    document.getElementById('updated-label').textContent = 'Actualizado: ' + new Date().toLocaleString('es-MX');
+    renderCurrent();
+  }catch(e){
+    if(store.sales && store.sales.length){
+      dot.className='off'; label.textContent='no se pudo actualizar, mostrando la última data cargada — '+e.message;
+      renderCurrent();
+    } else if(blocking){
+      dot.className='off'; label.textContent='error al conectar: '+e.message;
+    }
+  }
+}
+
+function renderCurrent(){
+  render(EVENTS.find(e=>e.id===activeEventId));
+}
+
+function render(ev){
+  const fx = fxFor(ev);
+  const {from,to} = getRange();
+
+  document.getElementById('kpi-ventas-label').textContent = 'Ventas ('+ev.currency+')';
+  document.getElementById('th-ventas-local').textContent = 'Ventas ('+ev.currency+')';
+
+  const evSalesAll = (store.sales||[]).filter(r=>matchesEvent(r, ev));
+  const sales = evSalesAll.filter(r=>{ const d=parseUS(r[0]); return !isNaN(d) && d>=from && d<=to; });
+
+  const dailySpendAll = store.metaSpend[ev.id] || {};
+  const dailySpendEntries = Object.entries(dailySpendAll).filter(([k])=>{ const d=parseUS(k); return d>=from && d<=to; });
+
+  const totalLocal = sales.reduce((a,r)=>a+r[2],0);
+  const totalEntradas = sales.reduce((a,r)=>a+r[3],0);
+  const totalUpsells = sales.reduce((a,r)=>a+(r[8]||0),0);
+  const totalUpsellsLocal = sales.reduce((a,r)=>a+(r[9]||0),0);
+  const count = sales.length;
+  const totalSpend = dailySpendEntries.reduce((a,[,v])=>a+v.spend,0);
+  const totalUSD = totalLocal/fx;
+  const roas = totalSpend>0 ? totalUSD/totalSpend : 0;
+  const cac = totalEntradas>0 ? totalSpend/totalEntradas : 0;
+
+  document.getElementById('kpi-mxn').textContent = fmtLocal(totalLocal, ev.currency);
+  document.getElementById('kpi-mxn-usd').textContent = '≈ $'+totalUSD.toLocaleString('en-US',{maximumFractionDigits:0})+' USD';
+  document.getElementById('kpi-entradas').textContent = totalEntradas;
+  document.getElementById('kpi-upsells').textContent = totalUpsells;
+  document.getElementById('kpi-upsells-sub').textContent = totalUpsells>0 ? fmtLocal(totalUpsellsLocal, ev.currency) : 'sin upsells en este período';
+  document.getElementById('kpi-count').textContent = count;
+  document.getElementById('kpi-ticket').textContent = 'Ticket prom. '+fmtLocal(count?Math.round(totalLocal/count):0, ev.currency);
+  document.getElementById('kpi-spend').textContent = '$'+totalSpend.toLocaleString('en-US',{maximumFractionDigits:0})+' USD';
+  document.getElementById('kpi-spend-sub').textContent = ev.campaigns.map(c=>c.name).join(', ');
+  document.getElementById('kpi-roas').textContent = roas.toFixed(2)+'x';
+  document.getElementById('kpi-cac-main').textContent = totalEntradas>0 ? ('$'+cac.toFixed(2)+' USD') : '—';
+
+  const allSpend = Object.values(dailySpendAll).reduce((a,v)=>a+v.spend,0);
+  const allEntradas = evSalesAll.reduce((a,r)=>a+r[3],0);
+  document.getElementById('goals').innerHTML = '';
+  renderGoal('Meta de inversión (USD)', allSpend, ev.goals.spendMin, ev.goals.spendMax, v=>'$'+v.toLocaleString('en-US',{maximumFractionDigits:0}));
+  renderGoal('Meta de entradas', allEntradas, ev.goals.salesMin, ev.goals.salesMax, v=>v.toLocaleString('es-MX'));
+
+  const dayKeys = Object.keys(dailySpendAll).filter(k=>{ const d=parseUS(k); return d>=from && d<=to; }).sort((a,b)=>parseUS(a)-parseUS(b));
+  const byDay = {}; dayKeys.forEach(k=>byDay[k]={local:0,count:0,entradas:0});
+  sales.forEach(r=>{ if(byDay[r[0]]!==undefined){ byDay[r[0]].local+=r[2]; byDay[r[0]].count+=1; byDay[r[0]].entradas+=r[3]; } });
+
+  const dayLabels = dayKeys.map(d=>d.replace(', 2026','').replace('July','Jul').replace('August','Ago'));
+  const daySalesLocal = dayKeys.map(k=>byDay[k].local);
+  const dayCounts = dayKeys.map(k=>byDay[k].count);
+  const dayEntradas = dayKeys.map(k=>byDay[k].entradas);
+  const daySpendUSD = dayKeys.map(k=>dailySpendAll[k]?.spend||0);
+  const dayRoas = dayKeys.map((k,i)=> daySpendUSD[i]>0 ? (daySalesLocal[i]/fx)/daySpendUSD[i] : 0);
+  const dayCac = dayKeys.map((k,i)=> dayEntradas[i]>0 ? daySpendUSD[i]/dayEntradas[i] : 0);
+  const daySalesUSD = daySalesLocal.map(v=>v/fx);
+
+  if(dailyChartRef) dailyChartRef.destroy();
+  dailyChartRef = new Chart(document.getElementById('dailyChart'), {
+    type: 'bar',
+    data:{ labels:dayLabels, datasets:[
+      {type:'bar', label:'Ventas (USD)', data:daySalesUSD, backgroundColor:'#ff8a5c99', borderRadius:6, yAxisID:'y'},
+      {type:'line', label:'Gasto Meta (USD)', data:daySpendUSD, borderColor:'#6fb7ff', backgroundColor:'#6fb7ff', tension:.35, yAxisID:'y'}
+    ]},
+    options:{ responsive:true, interaction:{mode:'index',intersect:false},
+      plugins:{ legend:{labels:{color:'#a9c3bd'}},
+        tooltip:{callbacks:{afterBody:(items)=>{ const i=items[0].dataIndex; return '# Ventas: '+dayCounts[i]+' · Entradas: '+dayEntradas[i]; }}} },
+      scales:{ x:{ticks:{color:'#a9c3bd'}, grid:{color:'#ffffff10'}},
+        y:{beginAtZero:true, position:'left', ticks:{color:'#a9c3bd'}, grid:{color:'#ffffff10'}, title:{display:true,text:'USD',color:'#a9c3bd'}} }
+    },
+    plugins:[{
+      id:'countLabels',
+      afterDatasetsDraw(chart){
+        const {ctx} = chart; const meta = chart.getDatasetMeta(0);
+        ctx.save(); ctx.fillStyle='#eef4f0'; ctx.font='700 11px Inter, sans-serif'; ctx.textAlign='center';
+        meta.data.forEach((bar,i)=>{ if(dayCounts[i]>0) ctx.fillText(dayCounts[i], bar.x, bar.y-6); });
+        ctx.restore();
+      }
+    }]
+  });
+
+  const bySource = {};
+  sales.forEach(r=>{ const s=(r[4]||'Orgánico/Directo').toLowerCase(); bySource[s]=(bySource[s]||0)+r[2]; });
+  const sEntries = Object.entries(bySource).sort((a,b)=>b[1]-a[1]);
+  if(sourceChartRef) sourceChartRef.destroy();
+  sourceChartRef = new Chart(document.getElementById('sourceChart'), {
+    type:'doughnut',
+    data:{ labels:sEntries.map(e=>e[0]), datasets:[{data:sEntries.map(e=>e[1]),
+      backgroundColor:['#ff8a5c','#6fb7ff','#7fd9a8','#c9a6ff','#ffd76f','#8899aa'], borderColor:'#16302e', borderWidth:2}] },
+    options:{ maintainAspectRatio:true, plugins:{legend:{position:'bottom', labels:{color:'#a9c3bd', boxWidth:10, font:{size:11}}}} }
+  });
+
+  if(roasChartRef) roasChartRef.destroy();
+  roasChartRef = new Chart(document.getElementById('roasChart'), {
+    type: 'line',
+    data:{ labels:dayLabels, datasets:[{label:'ROAS', data:dayRoas, borderColor:'#ff8a5c', backgroundColor:'#ff8a5c33', fill:true, tension:.35}] },
+    options:{ responsive:true, plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{color:'#a9c3bd'}, grid:{color:'#ffffff10'}}, y:{beginAtZero:true, ticks:{color:'#a9c3bd', callback:v=>v+'x'}, grid:{color:'#ffffff10'}} } }
+  });
+
+  if(cacChartRef) cacChartRef.destroy();
+  cacChartRef = new Chart(document.getElementById('cacChart'), {
+    type: 'line',
+    data:{ labels:dayLabels, datasets:[{label:'CAC (USD)', data:dayCac, borderColor:'#6fb7ff', backgroundColor:'#6fb7ff33', fill:true, tension:.35}] },
+    options:{ responsive:true, plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{color:'#a9c3bd'}, grid:{color:'#ffffff10'}}, y:{beginAtZero:true, ticks:{color:'#a9c3bd', callback:v=>'$'+v}, grid:{color:'#ffffff10'}} } }
+  });
+
+  document.getElementById('daily-table').innerHTML = dayKeys.map((k,i)=>`<tr>
+    <td>${k}</td><td class="num">${dayCounts[i]}</td>
+    <td class="num">${dayEntradas[i]}</td>
+    <td class="num">$${daySalesLocal[i].toLocaleString('es-MX')}</td>
+    <td class="num">$${daySpendUSD[i].toFixed(2)}</td>
+    <td class="num">${dayRoas[i]>0?dayRoas[i].toFixed(2)+'x':'—'}</td>
+    <td class="num">${dayCac[i]>0?'$'+dayCac[i].toFixed(2):'—'}</td>
+  </tr>`).join('') || '<tr><td colspan="7" style="color:var(--ink-dim)">Sin datos en este rango</td></tr>';
+
+  const salesByAd = {};
+  sales.forEach(r=>{ const c=r[7]; if(!c) return; if(!salesByAd[c]) salesByAd[c]={revenue:0,count:0,entradas:0};
+    salesByAd[c].revenue+=r[2]; salesByAd[c].count+=1; salesByAd[c].entradas+=r[3]; });
+
+  document.getElementById('ads-title').textContent = '🎬 Anuncios con ventas — ' + ev.campaigns.map(c=>c.name).join(', ');
+  const adsWithSales = ev.metaAds
+    .map(ad=>{ const s = salesByAd[ad.name] || {revenue:0,count:0}; const usage = sumInRange(store.adDaily, ad.name, dayKeys); return { ad, s, usage }; })
+    .filter(x=>x.s.count>0)
+    .sort((a,b)=>b.s.revenue-a.s.revenue);
+  document.getElementById('ads-table').innerHTML = adsWithSales.length ? adsWithSales.map(({ad,s,usage})=>{
+    const roasAd = usage.spend>0 ? (s.revenue/fx)/usage.spend : 0;
+    const pillClass = roasAd>=1 ? 'good' : (roasAd>0 ? 'mid':'zero');
+    return `<tr><td>${ad.name}</td><td class="num">$${usage.spend.toFixed(2)}</td><td class="num">${usage.clicks}</td>
+      <td class="num">$${s.revenue.toLocaleString('es-MX')} ${ev.currency}</td>
+      <td class="num">${s.count}</td>
+      <td class="num"><span class="pill ${pillClass}">${roasAd>0?roasAd.toFixed(2)+'x':'—'}</span></td></tr>`;
+  }).join('') : '<tr><td colspan="6" style="color:var(--ink-dim)">Ningún anuncio tiene ventas atribuidas en este período — la mayoría de ventas llegan sin UTM (compra directa)</td></tr>';
+
+  document.getElementById('adsets-title').textContent = '🏆 Conjuntos con ventas — ' + ev.campaigns.map(c=>c.name).join(', ');
+  const revenueByAdset = {};
+  ev.metaAdsets.forEach(name=>revenueByAdset[name]={revenue:0,count:0,entradas:0});
+  ev.metaAds.forEach(ad=>{ const s = salesByAd[ad.name]; if(s && revenueByAdset[ad.adset]){ revenueByAdset[ad.adset].revenue+=s.revenue; revenueByAdset[ad.adset].count+=s.count; revenueByAdset[ad.adset].entradas+=s.entradas; } });
+  const adsetsWithSales = ev.metaAdsets
+    .map(name=>{ const r = revenueByAdset[name]; const usage = sumInRange(store.adsetDaily, name, dayKeys); return { name, r, usage }; })
+    .filter(x=>x.r.entradas>0)
+    .sort((a,b)=>b.r.revenue-a.r.revenue);
+  document.getElementById('adsets-table').innerHTML = adsetsWithSales.length ? adsetsWithSales.map(({name,r,usage})=>{
+    const cacAs = r.entradas>0 ? usage.spend/r.entradas : 0;
+    const roasAs = usage.spend>0 ? (r.revenue/fx)/usage.spend : 0;
+    const pillClass = roasAs>=1 ? 'good' : (roasAs>0 ? 'mid':'zero');
+    return `<tr><td>${name}</td><td class="num">$${usage.spend.toFixed(2)}</td>
+      <td class="num">${r.entradas}</td>
+      <td class="num">${cacAs>0?'$'+cacAs.toFixed(2):'—'}</td>
+      <td class="num"><span class="pill ${pillClass}">${roasAs>0?roasAs.toFixed(2)+'x':'—'}</span></td></tr>`;
+  }).join('') : '<tr><td colspan="5" style="color:var(--ink-dim)">Ningún conjunto tiene entradas atribuidas en este período</td></tr>';
+
+  const allCACEntrada = allEntradas>0 ? allSpend/allEntradas : 0;
+  const bestAdset = adsetsWithSales[0]?.name;
+  const bestR = bestAdset ? revenueByAdset[bestAdset] : {revenue:0,count:0,entradas:0};
+  const bestUsage = bestAdset ? sumInRange(store.adsetDaily, bestAdset, dayKeys) : {spend:0};
+  const bestCAC = bestAdset && bestR.entradas>0 && bestUsage.spend>0 ? bestUsage.spend/bestR.entradas : null;
+  const remainMin = Math.max(0, ev.goals.salesMin - allEntradas);
+  const remainMax = Math.max(0, ev.goals.salesMax - allEntradas);
+  const budgetLeftMin = Math.max(0, ev.goals.spendMin - allSpend);
+  const budgetLeftMax = Math.max(0, ev.goals.spendMax - allSpend);
+  const neededBudgetMin = remainMin * allCACEntrada;
+  const neededBudgetMax = remainMax * allCACEntrada;
+
+  document.getElementById('scale-desc').textContent =
+    `Con el costo promedio por entrada del evento ($${allCACEntrada.toFixed(2)} USD/entrada) y con el CAC del conjunto que mejor está convirtiendo.`;
+
+  let scaleHtml = `<div class="goal-nums" style="margin-bottom:10px;">
+      <span>Faltan <b>${remainMin}–${remainMax}</b> entradas para la meta</span>
+      <span>Presupuesto restante en el plan: <b>$${budgetLeftMin.toLocaleString('en-US')}–${budgetLeftMax.toLocaleString('en-US')}</b> USD</span>
+    </div>
+    <div class="goal-nums" style="margin-bottom:10px;">
+      <span>Con el CAC promedio del evento, para llegar a la meta necesitarías invertir <b>~$${Math.round(neededBudgetMin).toLocaleString('en-US')}–${Math.round(neededBudgetMax).toLocaleString('en-US')} USD</b> más</span>
+    </div>`;
+  if(bestAdset && bestCAC){
+    const salesIfDoubled = Math.round((bestUsage.spend*2)/bestCAC);
+    scaleHtml += `<div class="goal-nums"><span>Mejor conjunto: <b>${bestAdset}</b> · CAC atribuido <b>$${bestCAC.toFixed(2)}</b></span>
+      <span>Si duplicas su presupuesto en este rango y mantiene el mismo CAC, proyecta ≈ <b>${salesIfDoubled} entradas</b> adicionales</span></div>`;
+  } else {
+    scaleHtml += `<div class="goal-nums"><span>Aún no hay suficientes entradas atribuidas a un conjunto específico en este período para proyectar con confianza.</span></div>`;
+  }
+  document.getElementById('scale-body').innerHTML = scaleHtml;
+
+  document.getElementById('foot-note').innerHTML =
+    `<b>Cómo leer este dashboard:</b> las ventas se leen de GoHighLevel y se asignan a cada evento según el producto comprado (no por location, ya que los 3 eventos comparten el mismo). ` +
+    `El gasto de Meta se calcula día por día desde la API de Meta, siempre coherente con el filtro de fecha elegido. ` +
+    `La inversión corresponde únicamente a <b>${ev.campaigns.map(c=>c.name).join(', ')}</b> en la cuenta <b>CP - Jony Respira</b>. ` +
+    `Los montos de este evento están en <b>${ev.currency}</b> — se convierten a USD con la tasa de cambio de arriba. ` +
+    `El ROAS total (KPI de arriba) cruza todas las ventas atribuidas a este evento contra el gasto; el ROAS por anuncio/conjunto es más conservador porque solo cuenta ventas con UTM explícito. ` +
+    `Los datos se cachean 4 minutos (local y en el servidor) para que la carga sea rápida — usa "↻ Actualizar" para forzar datos frescos.`;
+}
+
+function renderGoal(title, current, min, max, fmt){
+  const pctMin = Math.min(100, (current/min)*100);
+  const pctMax = Math.min(100, (current/max)*100);
+  const faltaMin = Math.max(0, min-current);
+  const faltaMax = Math.max(0, max-current);
+  const el = document.createElement('div');
+  el.className = 'goal';
+  el.innerHTML = `<h3>${title}</h3>
+    <div class="bar-track"><div class="bar-fill" style="width:${pctMax}%"></div><div class="bar-marker" style="left:${(min/max)*100}%"></div></div>
+    <div class="goal-nums">
+      <span>Llevas <b>${fmt(current)}</b></span>
+      <span>Faltan <b>${fmt(faltaMin)}–${fmt(faltaMax)}</b></span>
+      <span>Meta <b>${fmt(min)}–${fmt(max)}</b></span>
+      <span><b>${pctMin.toFixed(0)}%</b> del mínimo</span>
+    </div>`;
+  document.getElementById('goals').appendChild(el);
+}
+
+document.getElementById('date-from').addEventListener('change', renderCurrent);
+document.getElementById('date-to').addEventListener('change', renderCurrent);
+document.getElementById('fx-mxn').addEventListener('change', renderCurrent);
+document.getElementById('fx-cop').addEventListener('change', renderCurrent);
+
+initTabs();
+initPeriodButtons();
+loadData();
+</script>
+</body>
+</html>
