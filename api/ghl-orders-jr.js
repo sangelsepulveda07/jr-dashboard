@@ -1,29 +1,28 @@
 // /api/ghl-orders-jr.js
 // Trae las órdenes pagadas (status = Completed) de un Location de GoHighLevel
-// (API v2, Payments > Orders — la misma pantalla que ves en GHL) y les agrega
-// la atribución UTM (source/medium/campaign/anuncio) leyendo el contacto.
+// (API v2, Payments > Orders).
 //
-// Estructura real confirmada por captura de pantalla de GHL:
-//   - order.source.name  -> nombre completo del evento/producto
-//                            (ej. "2. 🇲🇽 Respiracion MTY - 23 Agosto ✅")
-//   - order.source.id    -> mismo Source ID que usábamos antes por evento
-//   - order.items[]      -> cada item con name, qty, amount/subtotal
-//                            los "upsells" son los items marcados como Bump
+// Estructura REAL confirmada llamando la API directamente:
+//   - order.sourceName    -> nombre completo del evento/producto
+//                            (ej. "8. 🇲🇽 Respiracion CDMX - 20 Sept ✅")
+//   - order.contactName / order.contactEmail  -> datos del cliente (campos planos)
+//   - order.amount        -> monto final pagado (ya con descuento aplicado)
 //
-// GET /api/ghl-orders?locationId=X&knownIds=id1,id2,id3
-//   knownIds = órdenes que el navegador YA tiene guardadas (localStorage).
-//   El endpoint solo procesa (y solo pide atribución de) las que NO conoce todavía.
-//
-// Respuesta:
-//   {
-//     newSales: [ [fecha, nombre, monto, entradas, source, medium, campaign, adName,
-//                  upsellCount, upsellMonto, orderId, nombreEvento, moneda], ... ],
-//     validIds, totalTransactions, fetchedNew, skippedCount
-//   }
+// ⚠️ LIMITACIONES CONOCIDAS (para no romper por timeout de Vercel Hobby — 10s):
+//   1. Solo se traen órdenes desde ORDERS_SINCE (las campañas actuales arrancaron
+//      julio 2026) — el location tiene +2400 órdenes históricas de años, no las
+//      necesitamos todas.
+//   2. NO se pide el detalle de atribución por contacto (eso implicaría cientos
+//      de llamadas extra = timeout seguro). Las tablas "Anuncios con ventas" y
+//      "Conjuntos con ventas" quedan vacías por ahora — el resto del dashboard
+//      (ventas, entradas, ROAS, CAC por evento) funciona completo.
+//   3. La lista de órdenes no trae detalle de items, así que no se puede saber
+//      si hubo "Bump"/upsell — ese KPI queda en 0.
 
 const GHL_TOKEN = process.env.GHL_ACCESS_TOKEN;
 const GHL_BASE = "https://services.leadconnectorhq.com";
 const GHL_VERSION = "2021-07-28";
+const ORDERS_SINCE = new Date("2026-06-15T00:00:00Z");
 
 function ghlHeaders() {
   return {
@@ -36,19 +35,6 @@ function ghlHeaders() {
 function fmtDate(iso) {
   const dt = new Date(iso);
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Mexico_City" });
-}
-
-// Un item es "upsell" si viene marcado como Bump (o si el nombre lo sugiere).
-function isBumpItem(item) {
-  const flag = (item.type || item.tag || item.label || item.itemType || "").toString().toLowerCase();
-  if (flag.includes("bump")) return true;
-  return /\bbump\b|\bupsell\b/i.test(item.name || "");
-}
-function itemQty(item) {
-  return item.qty ?? item.quantity ?? 1;
-}
-function itemTotal(item) {
-  return item.amount ?? item.subtotal ?? (item.price || 0) * itemQty(item);
 }
 
 async function fetchOrdersPage(locationId, startAfter, startAfterId) {
@@ -64,36 +50,6 @@ async function fetchOrdersPage(locationId, startAfter, startAfterId) {
   const j = await r.json();
   if (!r.ok) throw new Error(`GHL orders error: ${j.message || r.statusText}`);
   return j;
-}
-
-async function fetchContactAttribution(contactId) {
-  try {
-    const r = await fetch(`${GHL_BASE}/contacts/${contactId}`, { headers: ghlHeaders() });
-    const j = await r.json();
-    if (!r.ok) return {};
-    const attr = j?.contact?.attributionSource || j?.contact?.lastAttributionSource || {};
-    return {
-      source: attr.utmSource || attr.medium || "",
-      medium: attr.utmMedium || attr.placement || "",
-      campaign: attr.campaign || attr.utmCampaign || "",
-      adName: attr.adName || attr.utmContent || "",
-    };
-  } catch {
-    return {};
-  }
-}
-
-async function mapLimit(items, limit, fn) {
-  const out = new Array(items.length);
-  let i = 0;
-  async function worker() {
-    while (i < items.length) {
-      const idx = i++;
-      out[idx] = await fn(items[idx], idx);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return out;
 }
 
 module.exports = async (req, res) => {
@@ -119,53 +75,40 @@ module.exports = async (req, res) => {
     let startAfter = null;
     let startAfterId = null;
     let guard = 0;
-    while (guard < 30) {
+    let hitCutoff = false;
+    while (guard < 12 && !hitCutoff) {
       guard++;
       const page = await fetchOrdersPage(locationId, startAfter, startAfterId);
       const orders = page.data || page.orders || [];
       if (orders.length === 0) break;
-      allOrders = allOrders.concat(orders);
-      if (!page.meta || orders.length < 100) break;
-      startAfter = page.meta.startAfter;
-      startAfterId = page.meta.startAfterId;
+
+      for (const o of orders) {
+        if (new Date(o.createdAt) < ORDERS_SINCE) { hitCutoff = true; break; }
+        allOrders.push(o);
+      }
+
+      if (orders.length < 100) break;
+      const last = orders[orders.length - 1];
+      startAfter = new Date(last.createdAt).getTime();
+      startAfterId = last._id;
     }
 
-    // Filtro extra por si acaso el query param no filtró todo — solo Completed.
     allOrders = allOrders.filter((o) => (o.status || "").toLowerCase() === "completed");
 
     const validIds = allOrders.map((o) => o._id);
     const newOrders = allOrders.filter((o) => !knownIds.has(o._id));
 
-    const enriched = await mapLimit(newOrders, 8, async (o) => {
-      const currency = o.currency || "MXN";
-      const items = o.items || [];
-      const ticketItems = items.filter((it) => !isBumpItem(it));
-      const bumpItems = items.filter(isBumpItem);
-
-      const amount = o.amount ?? o.total ?? items.reduce((a, it) => a + itemTotal(it), 0);
-      const entradas = ticketItems.reduce((a, it) => a + itemQty(it), 0) || 1;
-      const upsellCount = bumpItems.reduce((a, it) => a + itemQty(it), 0);
-      const upsellAmount = bumpItems.reduce((a, it) => a + itemTotal(it), 0);
-
-      const attr = await fetchContactAttribution(o.contactId);
-      const eventName = o.source?.name || "";
-
-      return [
-        fmtDate(o.createdAt),
-        o.contactSnapshot?.name || o.contactSnapshot?.email || "Sin nombre",
-        amount,
-        entradas,
-        attr.source || "",
-        attr.medium || "",
-        attr.campaign || "",
-        attr.adName || "",
-        upsellCount,
-        upsellAmount,
-        o._id,
-        eventName,
-        currency,
-      ];
-    });
+    const enriched = newOrders.map((o) => [
+      fmtDate(o.createdAt),
+      o.contactName || o.contactEmail || "Sin nombre",
+      o.amount || 0,
+      1, // entradas: la lista no trae cantidad por item, asumimos 1 boleto/orden
+      "", "", "", "", // atribución por contacto — deshabilitada por ahora, ver nota arriba
+      0, 0, // upsellCount, upsellAmount — no disponibles en este endpoint
+      o._id,
+      o.sourceName || "",
+      o.currency || "MXN",
+    ]);
 
     res.status(200).json({
       newSales: enriched,
