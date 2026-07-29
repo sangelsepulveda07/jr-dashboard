@@ -24,6 +24,24 @@ const GHL_BASE = "https://services.leadconnectorhq.com";
 const GHL_VERSION = "2021-07-28";
 const ORDERS_SINCE = new Date("2026-06-15T00:00:00Z");
 
+// Nombres de pruebas internas — sus órdenes NO cuentan como ventas reales.
+// Comparación insensible a mayúsculas/acentos, por "contiene" (no exacta).
+const EXCLUDED_NAMES = [
+  "jonathan gonzalez",
+  "fernanda puente",
+  "alejandro angel",
+  "alejo angel",
+];
+
+function normalize(s) {
+  return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function isExcludedContact(o) {
+  const name = normalize(o.contactName);
+  const email = normalize(o.contactEmail);
+  return EXCLUDED_NAMES.some((n) => name.includes(n) || email.includes(n.replace(/\s+/g, "")));
+}
+
 function ghlHeaders() {
   return {
     Authorization: `Bearer ${GHL_TOKEN}`,
@@ -94,6 +112,9 @@ module.exports = async (req, res) => {
     }
 
     allOrders = allOrders.filter((o) => (o.status || "").toLowerCase() === "completed");
+    allOrders = allOrders.filter((o) => (o.paymentStatus || "").toLowerCase() === "paid");
+    allOrders = allOrders.filter((o) => (o.amount || 0) > 0);
+    allOrders = allOrders.filter((o) => !isExcludedContact(o));
 
     const validIds = allOrders.map((o) => o._id);
     const newOrders = allOrders.filter((o) => !knownIds.has(o._id));
