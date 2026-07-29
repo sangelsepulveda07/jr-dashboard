@@ -55,6 +55,20 @@ function fmtDate(iso) {
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Mexico_City" });
 }
 
+// Precio base del boleto por moneda — se usa para saber cuántos boletos trae
+// cada orden (ej. una orden de $2,598 MXN = 2 boletos de $1,299 c/u).
+// ⚠️ AJUSTA: el precio en COP es una estimación — confírmalo si hace falta.
+const TICKET_BASE_BY_CURRENCY = {
+  MXN: 1299,
+  USD: 47,
+  COP: 259000,
+};
+function estimateEntradas(amount, currency) {
+  const base = TICKET_BASE_BY_CURRENCY[currency] || TICKET_BASE_BY_CURRENCY.MXN;
+  if (!amount || amount <= 0) return 0;
+  return Math.max(1, Math.round(amount / base));
+}
+
 async function fetchOrdersPage(locationId, offset) {
   const params = new URLSearchParams({
     altId: locationId,
@@ -117,7 +131,7 @@ module.exports = async (req, res) => {
       fmtDate(o.createdAt),
       o.contactName || o.contactEmail || "Sin nombre",
       o.amount || 0,
-      1, // entradas: la lista no trae cantidad por item, asumimos 1 boleto/orden
+      estimateEntradas(o.amount, o.currency || "MXN"),
       "", "", "", "", // atribución por contacto — deshabilitada por ahora, ver nota arriba
       0, 0, // upsellCount, upsellAmount — no disponibles en este endpoint
       o._id,
