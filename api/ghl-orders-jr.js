@@ -55,15 +55,14 @@ function fmtDate(iso) {
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Mexico_City" });
 }
 
-async function fetchOrdersPage(locationId, startAfter, startAfterId) {
+async function fetchOrdersPage(locationId, offset) {
   const params = new URLSearchParams({
     altId: locationId,
     altType: "location",
     limit: "100",
+    offset: String(offset),
     status: "completed",
   });
-  if (startAfter) params.set("startAfter", startAfter);
-  if (startAfterId) params.set("startAfterId", startAfterId);
   const r = await fetch(`${GHL_BASE}/payments/orders?${params.toString()}`, { headers: ghlHeaders() });
   const j = await r.json();
   if (!r.ok) throw new Error(`GHL orders error: ${j.message || r.statusText}`);
@@ -89,28 +88,23 @@ module.exports = async (req, res) => {
   );
 
   try {
-    let allOrders = [];
-    let startAfter = null;
-    let startAfterId = null;
-    let guard = 0;
+    const byId = new Map(); // dedup por _id, sin importar qué falle en la paginación
     let hitCutoff = false;
-    while (guard < 12 && !hitCutoff) {
-      guard++;
-      const page = await fetchOrdersPage(locationId, startAfter, startAfterId);
-      const orders = page.data || page.orders || [];
+    for (let page = 0; page < 12 && !hitCutoff; page++) {
+      const offset = page * 100;
+      const result = await fetchOrdersPage(locationId, offset);
+      const orders = result.data || result.orders || [];
       if (orders.length === 0) break;
 
       for (const o of orders) {
-        if (new Date(o.createdAt) < ORDERS_SINCE) { hitCutoff = true; break; }
-        allOrders.push(o);
+        if (new Date(o.createdAt) < ORDERS_SINCE) { hitCutoff = true; continue; }
+        byId.set(o._id, o); // si ya existía, se sobreescribe con el mismo dato — no duplica
       }
 
       if (orders.length < 100) break;
-      const last = orders[orders.length - 1];
-      startAfter = new Date(last.createdAt).getTime();
-      startAfterId = last._id;
     }
 
+    let allOrders = Array.from(byId.values());
     allOrders = allOrders.filter((o) => (o.status || "").toLowerCase() === "completed");
     allOrders = allOrders.filter((o) => (o.paymentStatus || "").toLowerCase() === "paid");
     allOrders = allOrders.filter((o) => (o.amount || 0) > 0);
