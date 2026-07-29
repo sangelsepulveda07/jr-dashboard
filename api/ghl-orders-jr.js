@@ -1,24 +1,25 @@
 // /api/ghl-orders-jr.js
-// Trae las órdenes/ventas pagadas de un Location de GoHighLevel (API v2, Payments)
-// y les agrega la atribución UTM (source/medium/campaign/anuncio) leyendo el contacto.
+// Trae las órdenes pagadas (status = Completed) de un Location de GoHighLevel
+// (API v2, Payments > Orders — la misma pantalla que ves en GHL) y les agrega
+// la atribución UTM (source/medium/campaign/anuncio) leyendo el contacto.
+//
+// Estructura real confirmada por captura de pantalla de GHL:
+//   - order.source.name  -> nombre completo del evento/producto
+//                            (ej. "2. 🇲🇽 Respiracion MTY - 23 Agosto ✅")
+//   - order.source.id    -> mismo Source ID que usábamos antes por evento
+//   - order.items[]      -> cada item con name, qty, amount/subtotal
+//                            los "upsells" son los items marcados como Bump
 //
 // GET /api/ghl-orders?locationId=X&knownIds=id1,id2,id3
-//   knownIds = transacciones que el navegador YA tiene guardadas (localStorage).
+//   knownIds = órdenes que el navegador YA tiene guardadas (localStorage).
 //   El endpoint solo procesa (y solo pide atribución de) las que NO conoce todavía.
 //
 // Respuesta:
 //   {
-//     newSales: [ [fecha, nombre, montoMXN, entradas, source, medium, campaign, adName,
-//                  upsellCount, upsellMXN, transactionId], ... ],
-//     validIds: [ ...todas las transacciones vigentes del location... ],
-//     totalTransactions, fetchedNew, skippedCount
+//     newSales: [ [fecha, nombre, monto, entradas, source, medium, campaign, adName,
+//                  upsellCount, upsellMonto, orderId, nombreEvento, moneda], ... ],
+//     validIds, totalTransactions, fetchedNew, skippedCount
 //   }
-//
-// ⚠️ AJUSTA ESTO: no tengo forma de confirmar cuál integración de GHL usas exactamente
-// (Private Integration Bearer / API v1 clásica). Este archivo asume la API v2 moderna
-// (services.leadconnectorhq.com) con un Private Integration Token con scopes:
-// payments/orders.readonly y contacts.readonly. Si te da 401, ese es el primer lugar
-// a revisar — instrucciones completas en el README.
 
 const GHL_TOKEN = process.env.GHL_ACCESS_TOKEN;
 const GHL_BASE = "https://services.leadconnectorhq.com";
@@ -37,21 +38,20 @@ function fmtDate(iso) {
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Mexico_City" });
 }
 
-// Cuenta "entradas" a partir del monto — el precio de boleto depende de la moneda.
-// ⚠️ AJUSTA: el precio en COP es una estimación (no lo sé con certeza) — confírmalo
-// con el precio real del boleto de Medellín y cámbialo aquí si hace falta.
-const TICKET_BASE_BY_CURRENCY = {
-  MXN: 1299,
-  USD: 47,
-  COP: 259000,
-};
-function estimateEntradas(amount, currency) {
-  const base = TICKET_BASE_BY_CURRENCY[currency] || TICKET_BASE_BY_CURRENCY.MXN;
-  if (!amount || amount <= 0) return 0;
-  return Math.max(1, Math.round(amount / base));
+// Un item es "upsell" si viene marcado como Bump (o si el nombre lo sugiere).
+function isBumpItem(item) {
+  const flag = (item.type || item.tag || item.label || item.itemType || "").toString().toLowerCase();
+  if (flag.includes("bump")) return true;
+  return /\bbump\b|\bupsell\b/i.test(item.name || "");
+}
+function itemQty(item) {
+  return item.qty ?? item.quantity ?? 1;
+}
+function itemTotal(item) {
+  return item.amount ?? item.subtotal ?? (item.price || 0) * itemQty(item);
 }
 
-async function fetchOrdersPage(locationId, startAfter) {
+async function fetchOrdersPage(locationId, startAfter, startAfterId) {
   const params = new URLSearchParams({
     altId: locationId,
     altType: "location",
@@ -59,6 +59,7 @@ async function fetchOrdersPage(locationId, startAfter) {
     status: "completed",
   });
   if (startAfter) params.set("startAfter", startAfter);
+  if (startAfterId) params.set("startAfterId", startAfterId);
   const r = await fetch(`${GHL_BASE}/payments/orders?${params.toString()}`, { headers: ghlHeaders() });
   const j = await r.json();
   if (!r.ok) throw new Error(`GHL orders error: ${j.message || r.statusText}`);
@@ -82,7 +83,6 @@ async function fetchContactAttribution(contactId) {
   }
 }
 
-// Corre promesas con concurrencia limitada para no golpear el rate limit de GHL.
 async function mapLimit(items, limit, fn) {
   const out = new Array(items.length);
   let i = 0;
@@ -117,35 +117,44 @@ module.exports = async (req, res) => {
   try {
     let allOrders = [];
     let startAfter = null;
+    let startAfterId = null;
     let guard = 0;
     while (guard < 30) {
       guard++;
-      const page = await fetchOrdersPage(locationId, startAfter);
+      const page = await fetchOrdersPage(locationId, startAfter, startAfterId);
       const orders = page.data || page.orders || [];
       if (orders.length === 0) break;
       allOrders = allOrders.concat(orders);
-      if (!page.meta || !page.meta.startAfter || orders.length < 100) break;
+      if (!page.meta || orders.length < 100) break;
       startAfter = page.meta.startAfter;
+      startAfterId = page.meta.startAfterId;
     }
+
+    // Filtro extra por si acaso el query param no filtró todo — solo Completed.
+    allOrders = allOrders.filter((o) => (o.status || "").toLowerCase() === "completed");
 
     const validIds = allOrders.map((o) => o._id);
     const newOrders = allOrders.filter((o) => !knownIds.has(o._id));
 
     const enriched = await mapLimit(newOrders, 8, async (o) => {
-      const amount = o.amount || 0;
       const currency = o.currency || "MXN";
-      const attr = await fetchContactAttribution(o.contactId);
       const items = o.items || [];
-      const upsellCount = items.filter((it) => /upsell/i.test(it.name || "")).length;
-      const upsellAmount = items
-        .filter((it) => /upsell/i.test(it.name || ""))
-        .reduce((a, it) => a + (it.amount || 0), 0);
-      const productName = items.map((it) => it.name || "").filter(Boolean).join(" | ");
+      const ticketItems = items.filter((it) => !isBumpItem(it));
+      const bumpItems = items.filter(isBumpItem);
+
+      const amount = o.amount ?? o.total ?? items.reduce((a, it) => a + itemTotal(it), 0);
+      const entradas = ticketItems.reduce((a, it) => a + itemQty(it), 0) || 1;
+      const upsellCount = bumpItems.reduce((a, it) => a + itemQty(it), 0);
+      const upsellAmount = bumpItems.reduce((a, it) => a + itemTotal(it), 0);
+
+      const attr = await fetchContactAttribution(o.contactId);
+      const eventName = o.source?.name || "";
+
       return [
         fmtDate(o.createdAt),
         o.contactSnapshot?.name || o.contactSnapshot?.email || "Sin nombre",
         amount,
-        estimateEntradas(amount, currency),
+        entradas,
         attr.source || "",
         attr.medium || "",
         attr.campaign || "",
@@ -153,8 +162,8 @@ module.exports = async (req, res) => {
         upsellCount,
         upsellAmount,
         o._id,
-        productName,
-        o.currency || "MXN",
+        eventName,
+        currency,
       ];
     });
 
