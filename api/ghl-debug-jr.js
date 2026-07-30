@@ -5,8 +5,9 @@
 //
 // Uso:
 //   ?locationId=X                    -> dump de 2 órdenes crudas (comportamiento original)
-//   ?locationId=X&email=correo@x.com -> busca el contacto por email y devuelve el objeto CRUDO
+//   ?locationId=X&email=correo@x.com -> busca el contacto por email/nombre y devuelve el objeto CRUDO
 //   ?locationId=X&contactId=abc123   -> trae el contacto por ID directamente
+//   ?locationId=X&conversations=abc123 -> busca la conversación de ese contactId y trae sus mensajes crudos
 
 const GHL_TOKEN = process.env.GHL_ACCESS_TOKEN;
 const GHL_BASE = "https://services.leadconnectorhq.com";
@@ -29,8 +30,29 @@ module.exports = async (req, res) => {
   const locationId = req.query.locationId;
   const email = req.query.email;
   const contactId = req.query.contactId;
+  const conversationsContactId = req.query.conversations;
 
   try {
+    if (conversationsContactId) {
+      const searchParams = new URLSearchParams({
+        locationId,
+        contactId: conversationsContactId,
+      });
+      const searchR = await fetch(`${GHL_BASE}/conversations/search?${searchParams.toString()}`, { headers: ghlHeaders() });
+      const searchJ = await searchR.json();
+
+      const conversationId = searchJ?.conversations?.[0]?.id;
+      if (!conversationId) {
+        res.status(200).json({ note: "No se encontró conversación para ese contactId", searchResult: searchJ });
+        return;
+      }
+
+      const msgR = await fetch(`${GHL_BASE}/conversations/${conversationId}/messages?limit=50`, { headers: ghlHeaders() });
+      const msgJ = await msgR.json();
+      res.status(200).json({ conversationId, messages: msgJ });
+      return;
+    }
+
     if (contactId) {
       const r = await fetch(`${GHL_BASE}/contacts/${contactId}`, { headers: ghlHeaders() });
       const j = await r.json();
