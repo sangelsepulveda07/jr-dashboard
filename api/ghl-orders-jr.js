@@ -1,21 +1,36 @@
 // /api/ghl-orders-jr.js
 // Trae las órdenes pagadas (status = Completed) de un Location de GoHighLevel
-// (API v2, Payments > Orders).
+// (API v2, Payments > Orders), y para cada orden NUEVA consulta el contacto para
+// obtener atribución UTM (qué anuncio/campaña generó la venta).
 //
 // Estructura REAL confirmada llamando la API directamente:
 //   - order.sourceName    -> nombre completo del evento/producto
 //                            (ej. "8. 🇲🇽 Respiracion CDMX - 20 Sept ✅")
+//   - order.contactId     -> ID del contacto en GHL (se usa para pedir atribución)
 //   - order.contactName / order.contactEmail  -> datos del cliente (campos planos)
 //   - order.amount        -> monto final pagado (ya con descuento aplicado)
+//
+// ATRIBUCIÓN UTM (confirmado con GET /contacts/{id}):
+//   - contact.attributionSource     -> PRIMER touch (cuando se creó el contacto)
+//   - contact.lastAttributionSource -> ÚLTIMO touch antes de la venta actual
+//   En la práctica, el checkout de este negocio pasa por un redirect intermedio
+//   (metadash-ybfaeoib.manus.space) que casi siempre borra el UTM del último touch.
+//   Por eso usamos esta prioridad:
+//     1) lastAttributionSource, SI trae algún UTM.
+//     2) attributionSource (primer touch), SI trae UTM Y el contacto se creó
+//        dentro de la ventana de estas campañas (>= ORDERS_SINCE) — así evitamos
+//        atribuir la venta de un lead viejo (de otro evento, meses atrás) a una
+//        campaña que ya no tiene nada que ver.
+//     3) Si ninguno trae UTM, queda vacío (venta orgánica real / sin ads).
 //
 // ⚠️ LIMITACIONES CONOCIDAS (para no romper por timeout de Vercel Hobby — 10s):
 //   1. Solo se traen órdenes desde ORDERS_SINCE (las campañas actuales arrancaron
 //      julio 2026) — el location tiene +2400 órdenes históricas de años, no las
 //      necesitamos todas.
-//   2. NO se pide el detalle de atribución por contacto (eso implicaría cientos
-//      de llamadas extra = timeout seguro). Las tablas "Anuncios con ventas" y
-//      "Conjuntos con ventas" quedan vacías por ahora — el resto del dashboard
-//      (ventas, entradas, ROAS, CAC por evento) funciona completo.
+//   2. La atribución (llamada a /contacts/{id}) SOLO se pide para órdenes nuevas
+//      (que el dashboard aún no tenía cacheadas), en lotes concurrentes — así
+//      cada carga normal es rápida. Una recarga completa desde cero (cache
+//      limpio) sí puede tardar más si hay muchas órdenes nuevas de golpe.
 //   3. La lista de órdenes no trae detalle de items, así que no se puede saber
 //      si hubo "Bump"/upsell — ese KPI queda en 0.
 
@@ -23,6 +38,8 @@ const GHL_TOKEN = process.env.GHL_ACCESS_TOKEN;
 const GHL_BASE = "https://services.leadconnectorhq.com";
 const GHL_VERSION = "2021-07-28";
 const ORDERS_SINCE = new Date("2026-06-15T00:00:00Z");
+const ATTRIBUTION_CONCURRENCY = 20; // llamadas simultáneas a /contacts/{id}
+const ATTRIBUTION_MAX_ORDERS = 250; // tope de seguridad por request
 
 // Nombres de pruebas internas — sus órdenes NO cuentan como ventas reales.
 // Comparación insensible a mayúsculas/acentos, por "contiene" (no exacta).
@@ -83,6 +100,66 @@ async function fetchOrdersPage(locationId, offset) {
   return j;
 }
 
+async function fetchContact(contactId) {
+  try {
+    const r = await fetch(`${GHL_BASE}/contacts/${contactId}`, { headers: ghlHeaders() });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.contact || null;
+  } catch (e) {
+    return null; // si falla un contacto puntual, no tumbamos todo el request
+  }
+}
+
+function hasUtm(src) {
+  return !!(src && (src.utmSource || src.utmMedium || src.utmContent || src.campaign));
+}
+
+// Ver nota de "ATRIBUCIÓN UTM" arriba para la lógica de prioridad.
+function pickAttribution(contact) {
+  const empty = { utmSource: "", utmMedium: "", campaign: "", adName: "" };
+  if (!contact) return empty;
+
+  const last = contact.lastAttributionSource;
+  const first = contact.attributionSource;
+  const contactDate = contact.dateAdded ? new Date(contact.dateAdded) : null;
+
+  let src = null;
+  if (hasUtm(last)) {
+    src = last;
+  } else if (hasUtm(first) && contactDate && contactDate >= ORDERS_SINCE) {
+    src = first;
+  }
+  if (!src) return empty;
+
+  return {
+    utmSource: src.utmSource || "",
+    utmMedium: src.utmMedium || "",
+    campaign: src.campaign || "",
+    adName: src.utmContent || "", // en este negocio, utm_content = nombre del anuncio (ej. MTY23AGO_GIRA5H_IMG_02)
+  };
+}
+
+// Pide atribución solo para las órdenes recibidas, en lotes concurrentes.
+async function enrichAttribution(orders) {
+  const toEnrich = orders.slice(0, ATTRIBUTION_MAX_ORDERS);
+  const attrById = new Map();
+
+  for (let i = 0; i < toEnrich.length; i += ATTRIBUTION_CONCURRENCY) {
+    const batch = toEnrich.slice(i, i + ATTRIBUTION_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (o) => {
+        if (!o.contactId) return [o._id, null];
+        const contact = await fetchContact(o.contactId);
+        return [o._id, contact];
+      })
+    );
+    results.forEach(([id, contact]) => attrById.set(id, pickAttribution(contact)));
+  }
+
+  return attrById;
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "private, s-maxage=60, stale-while-revalidate=180");
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -127,17 +204,25 @@ module.exports = async (req, res) => {
     const validIds = allOrders.map((o) => o._id);
     const newOrders = allOrders.filter((o) => !knownIds.has(o._id));
 
-    const enriched = newOrders.map((o) => [
-      fmtDate(o.createdAt),
-      o.contactName || o.contactEmail || "Sin nombre",
-      o.amount || 0,
-      estimateEntradas(o.amount, o.currency || "MXN"),
-      "", "", "", "", // atribución por contacto — deshabilitada por ahora, ver nota arriba
-      0, 0, // upsellCount, upsellAmount — no disponibles en este endpoint
-      o._id,
-      o.sourceName || "",
-      o.currency || "MXN",
-    ]);
+    const attrById = await enrichAttribution(newOrders);
+
+    const enriched = newOrders.map((o) => {
+      const attr = attrById.get(o._id) || { utmSource: "", utmMedium: "", campaign: "", adName: "" };
+      return [
+        fmtDate(o.createdAt),
+        o.contactName || o.contactEmail || "Sin nombre",
+        o.amount || 0,
+        estimateEntradas(o.amount, o.currency || "MXN"),
+        attr.utmSource,
+        attr.utmMedium,
+        attr.campaign,
+        attr.adName,
+        0, 0, // upsellCount, upsellAmount — no disponibles en este endpoint
+        o._id,
+        o.sourceName || "",
+        o.currency || "MXN",
+      ];
+    });
 
     res.status(200).json({
       newSales: enriched,
@@ -145,6 +230,7 @@ module.exports = async (req, res) => {
       totalTransactions: allOrders.length,
       fetchedNew: enriched.length,
       skippedCount: allOrders.length - enriched.length,
+      attributedCount: Array.from(attrById.values()).filter((a) => a.adName || a.campaign).length,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
