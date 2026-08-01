@@ -483,43 +483,60 @@ async function fetchFresh(blocking){
   const campaignIds = ALL_CAMPAIGN_IDS.join(',');
   const knownIds = (store.sales || []).map(r=>r[10]).filter(Boolean);
 
-  try{
-    const [spendR, adR, adsetR, ghlR] = await Promise.all([
-      fetch(`/api/meta-spend-jr?campaignIds=${campaignIds}&_=${Date.now()}`).then(r=>r.json()),
-      fetch(`/api/meta-breakdown-jr?campaignIds=${campaignIds}&level=ad&_=${Date.now()}`).then(r=>r.json()),
-      fetch(`/api/meta-breakdown-jr?campaignIds=${campaignIds}&level=adset&_=${Date.now()}`).then(r=>r.json()),
-      fetch(`/api/ghl-orders-jr?locationId=${GHL_LOCATION_ID}&knownIds=${knownIds.join(',')}&_=${Date.now()}`).then(r=>r.json()),
-    ]);
+  // Promise.allSettled (no Promise.all): si GHL falla o tarda, NO debe tirar
+  // también el gasto de Meta que sí llegó bien — son fuentes independientes.
+  const [spendS, adS, adsetS, ghlS] = await Promise.allSettled([
+    fetch(`/api/meta-spend-jr?campaignIds=${campaignIds}&_=${Date.now()}`).then(r=>r.json()),
+    fetch(`/api/meta-breakdown-jr?campaignIds=${campaignIds}&level=ad&_=${Date.now()}`).then(r=>r.json()),
+    fetch(`/api/meta-breakdown-jr?campaignIds=${campaignIds}&level=adset&_=${Date.now()}`).then(r=>r.json()),
+    fetch(`/api/ghl-orders-jr?locationId=${GHL_LOCATION_ID}&knownIds=${knownIds.join(',')}&_=${Date.now()}`).then(r=>r.json()),
+  ]);
 
-    if(ghlR.error) throw new Error(ghlR.error);
+  const metaOk = spendS.status==='fulfilled' && adS.status==='fulfilled' && adsetS.status==='fulfilled';
+  const ghlOk = ghlS.status==='fulfilled' && !ghlS.value?.error;
 
-    // gasto diario por campaña -> lo indexamos por nombre de campaña para leerlo fácil
+  if(metaOk){
+    const spendR = spendS.value, adR = adS.value, adsetR = adsetS.value;
     const metaSpend = {};
     EVENTS.forEach(ev=>{
       const camp = ev.campaigns[0];
       metaSpend[ev.id] = spendR?.[camp.id]?.daily || {};
     });
+    store.metaSpend = metaSpend;
+    store.adDaily = adR?.daily || {};
+    store.adsetDaily = adsetR?.daily || {};
+  }
 
+  let nuevos = 0;
+  if(ghlOk){
+    const ghlR = ghlS.value;
     const validSet = new Set(ghlR.validIds || []);
     const keptCached = (store.sales || []).filter(r=>validSet.has(r[10]));
-    const merged = [...keptCached, ...(ghlR.newSales||[])].filter(r=>r[0] && r[0]!=='Invalid Date');
-
-    store = { metaSpend, adDaily: adR?.daily||{}, adsetDaily: adsetR?.daily||{}, sales: merged };
-    writeCache();
-
-    dot.className='ok';
-    const nuevos = ghlR.fetchedNew||0;
-    label.textContent = `conectado en vivo (GHL + Meta)${nuevos>0?' · '+nuevos+' ventas nuevas':' · sin cambios'}`;
-    document.getElementById('updated-label').textContent = 'Actualizado: ' + new Date().toLocaleString('es-MX');
-    renderCurrent();
-  }catch(e){
-    if(store.sales && store.sales.length){
-      dot.className='off'; label.textContent='no se pudo actualizar, mostrando la última data cargada — '+e.message;
-      renderCurrent();
-    } else if(blocking){
-      dot.className='off'; label.textContent='error al conectar: '+e.message;
-    }
+    store.sales = [...keptCached, ...(ghlR.newSales||[])].filter(r=>r[0] && r[0]!=='Invalid Date');
+    nuevos = ghlR.fetchedNew||0;
   }
+
+  if(metaOk || ghlOk){
+    writeCache();
+    document.getElementById('updated-label').textContent = 'Actualizado: ' + new Date().toLocaleString('es-MX');
+  }
+
+  if(metaOk && ghlOk){
+    dot.className='ok';
+    label.textContent = `conectado en vivo (GHL + Meta)${nuevos>0?' · '+nuevos+' ventas nuevas':' · sin cambios'}`;
+  } else if(metaOk && !ghlOk){
+    dot.className='cache';
+    label.textContent = 'Meta actualizado — GHL no respondió a tiempo, mostrando últimas ventas cargadas (reintenta con ↻ Actualizar)';
+  } else if(!metaOk && ghlOk){
+    dot.className='cache';
+    label.textContent = 'Ventas actualizadas — Meta no respondió a tiempo, mostrando último gasto cargado (reintenta con ↻ Actualizar)';
+  } else if(store.sales && store.sales.length){
+    dot.className='off'; label.textContent='no se pudo actualizar, mostrando la última data cargada';
+  } else if(blocking){
+    dot.className='off'; label.textContent='error al conectar — reintenta con ↻ Actualizar';
+  }
+
+  renderCurrent();
 }
 
 function renderCurrent(){
