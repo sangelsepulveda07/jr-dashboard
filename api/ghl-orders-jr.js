@@ -39,7 +39,6 @@ const GHL_BASE = "https://services.leadconnectorhq.com";
 const GHL_VERSION = "2021-07-28";
 const ORDERS_SINCE = new Date("2026-06-15T00:00:00Z");
 const ATTRIBUTION_CONCURRENCY = 20; // llamadas simultáneas a /contacts/{id}
-const ATTRIBUTION_CONCURRENCY = 20; // llamadas simultáneas a /contacts/{id}
 const ATTRIBUTION_MAX_ORDERS = 120; // tope de seguridad por request — bajado de 250 porque
 // una recarga completa desde cero (cache limpio) con más de ~150 órdenes nuevas de golpe
 // puede pasarse de los 10s de límite de Vercel Hobby. Las cargas normales (incrementales,
