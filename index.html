@@ -63,6 +63,12 @@
   @media(max-width:1200px){ .kpis{grid-template-columns:repeat(4,1fr);} }
   @media(max-width:820px){ .kpis{grid-template-columns:repeat(2,1fr);} }
   @media(max-width:480px){ .kpis{grid-template-columns:1fr;} }
+  .kpis-resumen{display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:14px;}
+  @media(max-width:1100px){ .kpis-resumen{grid-template-columns:repeat(3,1fr);} }
+  @media(max-width:700px){ .kpis-resumen{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:480px){ .kpis-resumen{grid-template-columns:1fr;} }
+  .kpis-resumen .kpi .value{font-size:1.8rem;}
+  .resumen-note{font-size:0.75rem; color:var(--ink-dim); margin:0 0 24px; line-height:1.5;}
   .kpi{background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:16px 16px 14px;}
   .kpi .label{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:6px;}
   .kpi .value{font-size:1.45rem; font-weight:700;}
@@ -134,6 +140,16 @@
     </div>
   </div>
 
+  <div class="kpis-resumen" id="resumen-kpis" style="display:none;">
+    <div class="kpi usd"><div class="label">Inversión total</div><div class="value" id="rk-spend">—</div><div class="sub">todas las campañas activas, USD</div></div>
+    <div class="kpi"><div class="label"># Ventas totales</div><div class="value" id="rk-count">—</div><div class="sub">todas las campañas activas</div></div>
+    <div class="kpi roas"><div class="label">Boletos totales</div><div class="value" id="rk-entradas">—</div><div class="sub">entradas vendidas</div></div>
+    <div class="kpi usd"><div class="label">CAC promedio</div><div class="value" id="rk-cac">—</div><div class="sub">costo por boleto, USD</div></div>
+    <div class="kpi roas"><div class="label">ROAS cruzado</div><div class="value" id="rk-roas">—</div><div class="sub" id="rk-roas-sub">—</div></div>
+  </div>
+  <p class="resumen-note" id="resumen-note" style="display:none;"></p>
+
+  <div id="event-detail">
   <div class="kpis" id="kpis-block">
     <div class="kpi"><div class="label" id="kpi-ventas-label">Ventas</div><div class="value" id="kpi-mxn">—</div><div class="sub" id="kpi-mxn-usd">—</div></div>
     <div class="kpi roas"><div class="label">Entradas</div><div class="value" id="kpi-entradas">—</div><div class="sub">boletos vendidos, período seleccionado</div></div>
@@ -212,12 +228,16 @@
   </div>
 
   <footer id="foot-note"></footer>
+  </div>
 </div>
 
 <script>
 // ============================================================================
 // CONFIGURACIÓN DE EVENTOS
-// matchKeywords: TODAS deben coincidir (ciudad + fecha) para asignar el evento.
+// matchKeywords: se usan para saber a qué evento pertenece cada venta de GHL,
+// comparando (en minúsculas) contra el nombre del producto de la orden y contra
+// el campo utm_campaign. Ajusta estas palabras si el nombre real del producto
+// en GHL es distinto.
 // ============================================================================
 const EVENTS = [
   {
@@ -329,7 +349,6 @@ const EVENTS = [
     ],
   },
 ];
-
 const GHL_LOCATION_ID = 'JevcH97yOMXW9tCaKWpT';
 
 const PERIODS = [
@@ -341,9 +360,9 @@ const PERIODS = [
 
 const ALL_CAMPAIGN_IDS = EVENTS.flatMap(e => e.campaigns.map(c => c.id));
 const CACHE_KEY = 'jonyDashboardCache_v2';
-const CACHE_TTL_MS = 4 * 60 * 1000;
+const CACHE_TTL_MS = 4 * 60 * 1000; // 4 min: dentro de esta ventana no vuelve a pedir Meta
 
-let activeEventId = EVENTS[0].id;
+let activeEventId = 'resumen';
 let activePeriod = 'all';
 let dailyChartRef, sourceChartRef, roasChartRef, cacChartRef;
 let store = { metaSpend:{}, adDaily:{}, adsetDaily:{}, sales:[] };
@@ -363,16 +382,27 @@ function matchesEvent(row, ev){
   const product = (row[11] || '').toLowerCase();
   const campaign = (row[6] || '').toLowerCase();
   const text = product + ' ' + campaign;
+  // TODAS las palabras clave deben estar presentes (no basta con "cdmx" solo,
+  // porque ahora hay más de un evento en la misma ciudad — hace falta también
+  // la fecha para no mezclar, ej. CDMX 16 Agosto vs CDMX 20 Septiembre).
   return ev.matchKeywords.every(kw => text.includes(kw));
 }
 
 function initTabs(){
   const tabsEl = document.getElementById('tabs');
   tabsEl.innerHTML = '';
+
+  const resumenBtn = document.createElement('button');
+  resumenBtn.className = 'tab' + (activeEventId==='resumen' ? ' active':'');
+  resumenBtn.textContent = '📊 Resumen General';
+  resumenBtn.onclick = ()=>{ activeEventId = 'resumen'; initTabs(); renderCurrent(); };
+  tabsEl.appendChild(resumenBtn);
+
   EVENTS.forEach(ev=>{
     const b = document.createElement('button');
     b.className = 'tab' + (ev.id===activeEventId ? ' active':'');
     b.textContent = ev.label;
+    // Cambiar de tab NO dispara red — todo ya está cargado. Solo re-renderiza.
     b.onclick = ()=>{ activeEventId = ev.id; initTabs(); renderCurrent(); };
     tabsEl.appendChild(b);
   });
@@ -427,6 +457,10 @@ function sumInRange(dailyMap, name, dayKeys){
   return {spend, clicks};
 }
 
+// ============================================================================
+// CARGA — todo en paralelo, UNA sola vez. Cambiar de tab o de período después
+// no vuelve a tocar la red, solo re-filtra/re-dibuja con lo que ya está en memoria.
+// ============================================================================
 async function loadData(forceFresh){
   const dot=document.getElementById('live-dot'), label=document.getElementById('live-label');
 
@@ -436,6 +470,7 @@ async function loadData(forceFresh){
     dot.className='cache'; label.textContent='desde caché local (actualiza automático cada 4 min)';
     document.getElementById('updated-label').textContent = 'Actualizado: ' + new Date(cached.ts).toLocaleString('es-MX');
     renderCurrent();
+    // refresca en segundo plano sin bloquear la UI
     fetchFresh(false);
     return;
   }
@@ -458,6 +493,7 @@ async function fetchFresh(blocking){
 
     if(ghlR.error) throw new Error(ghlR.error);
 
+    // gasto diario por campaña -> lo indexamos por nombre de campaña para leerlo fácil
     const metaSpend = {};
     EVENTS.forEach(ev=>{
       const camp = ev.campaigns[0];
@@ -487,7 +523,50 @@ async function fetchFresh(blocking){
 }
 
 function renderCurrent(){
-  render(EVENTS.find(e=>e.id===activeEventId));
+  const isResumen = activeEventId === 'resumen';
+  document.getElementById('resumen-kpis').style.display = isResumen ? 'grid' : 'none';
+  document.getElementById('resumen-note').style.display = isResumen ? 'block' : 'none';
+  document.getElementById('event-detail').style.display = isResumen ? 'none' : 'block';
+  if(isResumen){ renderResumen(); }
+  else{ render(EVENTS.find(e=>e.id===activeEventId)); }
+}
+
+// ============================================================================
+// RESUMEN GENERAL — suma todas las campañas activas (todos los EVENTS), sin
+// desglose por anuncio/conjunto. Cada evento se convierte a USD con su propia
+// tasa de cambio (MXN o COP) antes de sumar, para poder cruzar todo junto.
+// ============================================================================
+function renderResumen(){
+  const {from,to} = getRange();
+  let totalSpendUSD = 0, totalCount = 0, totalEntradas = 0, totalSalesUSD = 0;
+
+  EVENTS.forEach(ev=>{
+    const fx = fxFor(ev);
+
+    const dailySpendAll = store.metaSpend[ev.id] || {};
+    const dailySpendEntries = Object.entries(dailySpendAll).filter(([k])=>{ const d=parseUS(k); return d>=from && d<=to; });
+    totalSpendUSD += dailySpendEntries.reduce((a,[,v])=>a+v.spend,0);
+
+    const evSalesAll = (store.sales||[]).filter(r=>matchesEvent(r, ev));
+    const sales = evSalesAll.filter(r=>{ const d=parseUS(r[0]); return !isNaN(d) && d>=from && d<=to; });
+    totalSalesUSD += sales.reduce((a,r)=>a+r[2],0) / fx;
+    totalCount += sales.length;
+    totalEntradas += sales.reduce((a,r)=>a+r[3],0);
+  });
+
+  const roas = totalSpendUSD>0 ? totalSalesUSD/totalSpendUSD : 0;
+  const cac = totalEntradas>0 ? totalSpendUSD/totalEntradas : 0;
+
+  document.getElementById('rk-spend').textContent = '$'+totalSpendUSD.toLocaleString('en-US',{maximumFractionDigits:0})+' USD';
+  document.getElementById('rk-count').textContent = totalCount;
+  document.getElementById('rk-entradas').textContent = totalEntradas;
+  document.getElementById('rk-cac').textContent = totalEntradas>0 ? ('$'+cac.toFixed(2)+' USD') : '—';
+  document.getElementById('rk-roas').textContent = roas.toFixed(2)+'x';
+  document.getElementById('rk-roas-sub').textContent = '≈ $'+totalSalesUSD.toLocaleString('en-US',{maximumFractionDigits:0})+' USD en ventas';
+
+  document.getElementById('resumen-note').innerHTML =
+    `Suma de <b>${EVENTS.map(e=>e.label).join(', ')}</b> — cada evento en su moneda original (MXN o COP) convertido a USD con la tasa de arriba antes de sumar. ` +
+    `Usa los botones de período para acotar el rango de fechas.`;
 }
 
 function render(ev){
