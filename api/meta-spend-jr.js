@@ -11,14 +11,26 @@ const META_TOKEN = process.env.META_ACCESS_TOKEN;
 const API_VERSION = "v21.0";
 
 function fmtDate(d) {
+  // "2026-07-09" -> "July 9, 2026" (mismo formato que usa el front)
   const dt = new Date(d + "T00:00:00Z");
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
+// ⚠️ Sin esto, Meta usa su rango por default (last_30d), que EXCLUYE el día de
+// hoy (Meta corta ese preset hasta ayer para no mostrar datos parciales). Por
+// eso el gasto de "hoy" siempre daba $0 — nunca se le pedía explícitamente.
+function todayRange() {
+  const now = new Date();
+  const until = now.toISOString().slice(0, 10); // YYYY-MM-DD, hoy en UTC
+  return { since: "2026-06-01", until };
+}
+
 async function fetchCampaignDaily(campaignId) {
+  const { since, until } = todayRange();
   const url =
     `https://graph.facebook.com/${API_VERSION}/${campaignId}/insights` +
     `?time_increment=1&fields=spend,clicks,date_start&limit=500` +
+    `&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}` +
     `&access_token=${META_TOKEN}`;
 
   const daily = {};
