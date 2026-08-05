@@ -14,11 +14,22 @@ function fmtDate(d) {
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
+// ⚠️ Mismo fix que en meta-spend-jr.js: sin time_range explícito, Meta usa
+// last_30d por default, que EXCLUYE el día de hoy. Por eso el gasto de "hoy"
+// nunca aparecía en las tablas de anuncios/conjuntos.
+function todayRange() {
+  const now = new Date();
+  const until = now.toISOString().slice(0, 10);
+  return { since: "2026-06-01", until };
+}
+
 async function fetchLevelDaily(campaignId, level) {
   const nameField = level === "ad" ? "ad_name" : "adset_name";
+  const { since, until } = todayRange();
   const url =
     `https://graph.facebook.com/${API_VERSION}/${campaignId}/insights` +
     `?level=${level}&time_increment=1&fields=${nameField},spend,clicks,date_start&limit=500` +
+    `&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}` +
     `&access_token=${META_TOKEN}`;
 
   const daily = {};
@@ -65,6 +76,7 @@ module.exports = async (req, res) => {
     const perCampaign = await Promise.all(
       campaignIds.map((id) => fetchLevelDaily(id, level).catch(() => ({})))
     );
+    // Fusiona el desglose de todas las campañas pedidas en un solo objeto
     const daily = {};
     perCampaign.forEach((d) => {
       Object.entries(d).forEach(([name, days]) => {
