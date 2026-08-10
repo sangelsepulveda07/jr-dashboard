@@ -197,6 +197,9 @@
     <div class="kpi usd"><div class="kpi-text"><div class="label">Inversión Meta</div><div class="value" id="kpi-spend">—</div><div class="sub" id="kpi-spend-sub">campaña filtrada</div></div><div class="icon-badge">📣</div></div>
     <div class="kpi roas"><div class="kpi-text"><div class="label">ROAS cruzado</div><div class="value" id="kpi-roas">—</div></div><div class="icon-badge">🎯</div></div>
     <div class="kpi usd"><div class="kpi-text"><div class="label">CAC</div><div class="value" id="kpi-cac-main">—</div><div class="sub">costo por entrada, período seleccionado</div></div><div class="icon-badge">📉</div></div>
+    <div class="kpi usd"><div class="kpi-text"><div class="label">% Restante de presupuesto</div><div class="value" id="kpi-budget-left-pct">—</div><div class="sub" id="kpi-budget-left-sub">—</div></div><div class="icon-badge">🧮</div></div>
+    <div class="kpi"><div class="kpi-text"><div class="label">Objetivo de entradas</div><div class="value" id="kpi-goal-entradas">—</div><div class="sub">meta del evento completo</div></div><div class="icon-badge">🏁</div></div>
+    <div class="kpi roas"><div class="kpi-text"><div class="label">Objetivo alcanzado</div><div class="value" id="kpi-goal-pct">—</div><div class="sub" id="kpi-goal-pct-sub">—</div></div><div class="icon-badge">✅</div></div>
   </div>
 
   <div class="goals" id="goals"></div>
@@ -283,6 +286,7 @@ const EVENTS = [
     id: 'cdmx16ago',
     label: '16 Ago · CDMX',
     currency: 'MXN',
+    eventDate: '2026-08-16',
     matchKeywords: ['cdmx', '16 agosto'],
     campaigns: [{ id:'120257677827110386', name:'CDMX16AGO_Ventas_TesteoOleada1' }],
     goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
@@ -303,6 +307,7 @@ const EVENTS = [
     id: 'mty23ago',
     label: '23 Ago · MTY',
     currency: 'MXN',
+    eventDate: '2026-08-23',
     matchKeywords: ['mty', '23 agosto'],
     campaigns: [{ id:'120258012257390386', name:'MTY23AGO_Ventas_TesteoOleada1' }],
     goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
@@ -325,6 +330,7 @@ const EVENTS = [
     id: 'medellin29ago',
     label: '29 Ago · Medellín',
     currency: 'COP',
+    eventDate: '2026-08-29',
     matchKeywords: ['medellin', '29 agosto'],
     campaigns: [{ id:'120258063523740386', name:'MEDELLIN29AGO_Ventas_TesteoOleada1' }],
     goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
@@ -345,6 +351,7 @@ const EVENTS = [
     id: 'bogota30ago',
     label: '30 Ago · Bogotá',
     currency: 'COP',
+    eventDate: '2026-08-30',
     matchKeywords: ['bogota', '30 agosto'],
     campaigns: [{ id:'120258170319240386', name:'BOG30AGO_Ventas_TesteoOleada1' }],
     goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
@@ -368,6 +375,7 @@ const EVENTS = [
     id: 'puebla5sept',
     label: '5 Sept · Puebla',
     currency: 'MXN',
+    eventDate: '2026-09-05',
     matchKeywords: ['puebla', '5 sept'],
     campaigns: [{ id:'120258170702760386', name:'PUEBLA5SEPT_Ventas_TesteoOleada1' }],
     goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
@@ -385,6 +393,60 @@ const EVENTS = [
       {name:'PUEBLA5SEPT_GIRA5H_VID_02', adset:'PUEBLA5SEPT_TestC_Advantage'},
       {name:'PUEBLA5SEPT_GIRA5H_VID_03', adset:'PUEBLA5SEPT_TestC_Advantage'},
       {name:'PUEBLA5SEPT_GIRA5H_VID_04', adset:'PUEBLA5SEPT_TestC_Advantage'},
+    ],
+  },
+  {
+    id: 'mty13sep',
+    label: '13 Sept · MTY',
+    currency: 'MXN',
+    eventDate: '2026-09-13',
+    matchKeywords: ['mty', '13 sept'],
+    campaigns: [{ id:'120258547257190386', name:'MTY13SEP_Ventas_TesteoOleada1' }],
+    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    // ⚠️ Varios anuncios de esta campaña quedaron con el MISMO nombre repetido en
+    // más de un conjunto (parece un error al duplicar conjuntos). El desglose por
+    // anuncio/conjunto puede salir impreciso — los totales de la campaña (arriba)
+    // están bien porque vienen directo de Meta, no de este cruce por nombre.
+    metaAdsets: ['MTY23AGO_TestA_RMKT','MTY13SEP_TestB_LAL','MTY13SEP_TestC_Advantage'],
+    metaAds: [
+      {name:'MTY13SEP_GIRA5H_VID_08', adset:'MTY23AGO_TestA_RMKT'},
+      {name:'MTY13SEP_GIRA5H_VID_05', adset:'MTY23AGO_TestA_RMKT'},
+      {name:'MTY13SEP_GIRA5H_VID_02', adset:'MTY23AGO_TestA_RMKT'},
+      {name:'MTY13SEP_GIRA5H_VID_03', adset:'MTY13SEP_TestC_Advantage'},
+      {name:'MTY13SEP_GIRA5H_VID_01', adset:'MTY13SEP_TestC_Advantage'},
+      {name:'MTY13SEP_GIRA5H_VID_04', adset:'MTY23AGO_TestA_RMKT'},
+      {name:'MTY13SEP_GIRA5H_VID_06', adset:'MTY13SEP_TestC_Advantage'},
+      {name:'MTY13SEP_GIRA5H_VID_10', adset:'MTY23AGO_TestA_RMKT'},
+      {name:'MTY13SEP_GIRA5H_VID_07', adset:'MTY23AGO_TestA_RMKT'},
+      {name:'MTY13SEP_GIRA5H_VID_09', adset:'MTY13SEP_TestC_Advantage'},
+    ],
+  },
+  {
+    id: 'cdmx20sep',
+    label: '20 Sept · CDMX',
+    currency: 'MXN',
+    eventDate: '2026-09-20',
+    matchKeywords: ['cdmx', '20 sept'],
+    campaigns: [{ id:'120258469592890386', name:'CDMX20SEP_Ventas_TesteoOleada1' }],
+    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    // ⚠️ Mismo caso: varios anuncios repiten nombre en más de un conjunto.
+    // Ver nota en MTY13SEP arriba.
+    metaAdsets: ['CDMX20SEP_TestA_RMKT','CDMX20SEP_TestB_LAL','CDMX20SEP_TestC_Advantage'],
+    metaAds: [
+      {name:'CDMX20SEP_GIRA5H_VID_04', adset:'CDMX20SEP_TestA_RMKT'},
+      {name:'CDMX20SEP_GIRA5H_VID_03 - Copia', adset:'CDMX20SEP_TestB_LAL'},
+      {name:'CDMX20SEP_GIRA5H_VID_05 - Copia', adset:'CDMX20SEP_TestB_LAL'},
+      {name:'CDMX20SEP_GIRA5H_VID_02 - Copia', adset:'CDMX20SEP_TestB_LAL'},
+      {name:'CDMX20SEP_GIRA5H_VID_01 - Copia', adset:'CDMX20SEP_TestC_Advantage'},
+      {name:'CDMX20SEP_GIRA5H_VID_05', adset:'CDMX20SEP_TestA_RMKT'},
+      {name:'CDMX20SEP_GIRA5H_VID_01', adset:'CDMX20SEP_TestA_RMKT'},
+      {name:'CDMX20SEP_GIRA5H_VID_04 - Copia', adset:'CDMX20SEP_TestC_Advantage'},
+      {name:'CDMX20SEP_GIRA5H_VID_07 - Copia', adset:'CDMX20SEP_TestB_LAL'},
+      {name:'CDMX20SEP_GIRA5H_VID_07', adset:'CDMX20SEP_TestA_RMKT'},
+      {name:'CDMX20SEP_GIRA5H_VID_02', adset:'CDMX20SEP_TestA_RMKT'},
+      {name:'CDMX20SEP_GIRA5H_VID_06 - Copia', adset:'CDMX20SEP_TestB_LAL'},
+      {name:'CDMX20SEP_GIRA5H_VID_06', adset:'CDMX20SEP_TestA_RMKT'},
+      {name:'CDMX20SEP_GIRA5H_VID_03', adset:'CDMX20SEP_TestA_RMKT'},
     ],
   },
 ];
@@ -660,6 +722,22 @@ function render(ev){
   document.getElementById('kpi-roas').textContent = roas.toFixed(2)+'x';
   document.getElementById('kpi-cac-main').textContent = totalEntradas>0 ? ('$'+cac.toFixed(2)+' USD') : '—';
 
+  // % restante de presupuesto, objetivo de entradas y % ya alcanzado — SIEMPRE
+  // sobre el acumulado TOTAL del evento (no el rango de fecha filtrado arriba),
+  // porque la meta es del evento completo, no de un período parcial.
+  const allSpendForGoals = Object.values(dailySpendAll).reduce((a,v)=>a+v.spend,0);
+  const allEntradasForGoals = evSalesAll.reduce((a,r)=>a+r[3],0);
+  const budgetLeftPct = ev.goals.spendMax>0 ? Math.max(0, 100 - (allSpendForGoals/ev.goals.spendMax)*100) : 0;
+  document.getElementById('kpi-budget-left-pct').textContent = budgetLeftPct.toFixed(0)+'%';
+  document.getElementById('kpi-budget-left-sub').textContent =
+    '$'+Math.max(0, ev.goals.spendMax-allSpendForGoals).toLocaleString('en-US',{maximumFractionDigits:0})+' USD libres de $'+ev.goals.spendMax.toLocaleString('en-US')+' USD';
+
+  document.getElementById('kpi-goal-entradas').textContent = ev.goals.salesMin+'–'+ev.goals.salesMax;
+
+  const goalPct = ev.goals.salesMin>0 ? Math.min(100, (allEntradasForGoals/ev.goals.salesMin)*100) : 0;
+  document.getElementById('kpi-goal-pct').textContent = goalPct.toFixed(0)+'%';
+  document.getElementById('kpi-goal-pct-sub').textContent = allEntradasForGoals+' de '+ev.goals.salesMin+' entradas mínimas';
+
   const allSpend = Object.values(dailySpendAll).reduce((a,v)=>a+v.spend,0);
   const allEntradas = evSalesAll.reduce((a,r)=>a+r[3],0);
   document.getElementById('goals').innerHTML = '';
@@ -787,10 +865,34 @@ function render(ev){
   const neededBudgetMin = remainMin * allCACEntrada;
   const neededBudgetMax = remainMax * allCACEntrada;
 
+  // Ritmo diario necesario: cuántas entradas/día hacen falta desde HOY hasta la
+  // fecha del evento para llegar a la meta (esto es lo que responde "día a día
+  // cuántas ventas necesito").
+  let paceHtml = '';
+  if(ev.eventDate){
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const eventDay = new Date(ev.eventDate+'T00:00:00');
+    const daysLeft = Math.max(0, Math.ceil((eventDay - today0) / 86400000));
+    if(daysLeft > 0 && remainMin > 0){
+      const paceMin = (remainMin / daysLeft).toFixed(1);
+      const paceMax = (remainMax / daysLeft).toFixed(1);
+      const dailyBudgetMin = (neededBudgetMin / daysLeft).toFixed(0);
+      const dailyBudgetMax = (neededBudgetMax / daysLeft).toFixed(0);
+      paceHtml = `<div class="goal-nums" style="margin-bottom:10px;">
+        <span>Faltan <b>${daysLeft} días</b> para el evento (${eventDay.toLocaleDateString('es-MX',{day:'numeric',month:'long'})})</span>
+        <span>Ritmo necesario: <b>${paceMin}–${paceMax} entradas/día</b> · <b>$${dailyBudgetMin}–${dailyBudgetMax} USD/día</b></span>
+      </div>`;
+    } else if(daysLeft > 0 && remainMin === 0){
+      paceHtml = `<div class="goal-nums" style="margin-bottom:10px;"><span>✅ Meta mínima de entradas ya alcanzada, con ${daysLeft} días restantes para el evento.</span></div>`;
+    } else if(daysLeft === 0){
+      paceHtml = `<div class="goal-nums" style="margin-bottom:10px;"><span>📅 El evento es hoy.</span></div>`;
+    }
+  }
+
   document.getElementById('scale-desc').textContent =
     `Con el costo promedio por entrada del evento ($${allCACEntrada.toFixed(2)} USD/entrada) y con el CAC del conjunto que mejor está convirtiendo.`;
 
-  let scaleHtml = `<div class="goal-nums" style="margin-bottom:10px;">
+  let scaleHtml = paceHtml + `<div class="goal-nums" style="margin-bottom:10px;">
       <span>Faltan <b>${remainMin}–${remainMax}</b> entradas para la meta</span>
       <span>Presupuesto restante en el plan: <b>$${budgetLeftMin.toLocaleString('en-US')}–${budgetLeftMax.toLocaleString('en-US')}</b> USD</span>
     </div>
