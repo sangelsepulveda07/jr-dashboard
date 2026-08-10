@@ -173,8 +173,8 @@
       <input type="date" id="date-from"> → <input type="date" id="date-to">
     </span>
     <div class="fx-wrap">
-      <label style="display:flex; align-items:center; gap:6px;">TC MXN→USD <input type="number" id="fx-mxn" value="18.5" step="0.1" min="1"></label>
-      <label style="display:flex; align-items:center; gap:6px;">TC COP→USD <input type="number" id="fx-cop" value="4100" step="10" min="100"></label>
+      <label style="display:flex; align-items:center; gap:6px;">TC MXN→USD <input type="number" id="fx-mxn" value="17.2" step="0.1" min="1"></label>
+      <label style="display:flex; align-items:center; gap:6px;">TC COP→USD <input type="number" id="fx-cop" value="3200" step="10" min="100"></label>
       <button class="btn" onclick="loadData(true)">↻ Actualizar</button>
     </div>
   </div>
@@ -183,7 +183,7 @@
     <div class="kpi usd"><div class="kpi-text"><div class="label">Inversión total</div><div class="value" id="rk-spend">—</div><div class="sub">todas las campañas activas, USD</div></div><div class="icon-badge">💰</div></div>
     <div class="kpi"><div class="kpi-text"><div class="label"># Ventas totales</div><div class="value" id="rk-count">—</div><div class="sub">todas las campañas activas</div></div><div class="icon-badge">🛒</div></div>
     <div class="kpi roas"><div class="kpi-text"><div class="label">Boletos totales</div><div class="value" id="rk-entradas">—</div><div class="sub">entradas vendidas</div></div><div class="icon-badge">🎟️</div></div>
-    <div class="kpi usd"><div class="kpi-text"><div class="label">CAC promedio</div><div class="value" id="rk-cac">—</div><div class="sub">costo por boleto, USD</div></div><div class="icon-badge">📉</div></div>
+    <div class="kpi usd"><div class="kpi-text"><div class="label">CAC promedio</div><div class="value" id="rk-cac">—</div><div class="sub" id="rk-cac-sub">costo por boleto, USD · objetivo &lt;$21</div></div><div class="icon-badge">📉</div></div>
     <div class="kpi roas"><div class="kpi-text"><div class="label">ROAS cruzado</div><div class="value" id="rk-roas">—</div><div class="sub" id="rk-roas-sub">—</div></div><div class="icon-badge">🎯</div></div>
   </div>
   <p class="resumen-note" id="resumen-note" style="display:none;"></p>
@@ -196,10 +196,11 @@
     <div class="kpi"><div class="kpi-text"><div class="label"># Ventas · Ticket prom.</div><div class="value" id="kpi-count">—</div><div class="sub" id="kpi-ticket">—</div></div><div class="icon-badge">🛒</div></div>
     <div class="kpi usd"><div class="kpi-text"><div class="label">Inversión Meta</div><div class="value" id="kpi-spend">—</div><div class="sub" id="kpi-spend-sub">campaña filtrada</div></div><div class="icon-badge">📣</div></div>
     <div class="kpi roas"><div class="kpi-text"><div class="label">ROAS cruzado</div><div class="value" id="kpi-roas">—</div></div><div class="icon-badge">🎯</div></div>
-    <div class="kpi usd"><div class="kpi-text"><div class="label">CAC</div><div class="value" id="kpi-cac-main">—</div><div class="sub">costo por entrada, período seleccionado</div></div><div class="icon-badge">📉</div></div>
+    <div class="kpi usd"><div class="kpi-text"><div class="label">CAC</div><div class="value" id="kpi-cac-main">—</div><div class="sub" id="kpi-cac-sub">costo por entrada · objetivo &lt;$21</div></div><div class="icon-badge">📉</div></div>
     <div class="kpi usd"><div class="kpi-text"><div class="label">% Restante de presupuesto</div><div class="value" id="kpi-budget-left-pct">—</div><div class="sub" id="kpi-budget-left-sub">—</div></div><div class="icon-badge">🧮</div></div>
     <div class="kpi"><div class="kpi-text"><div class="label">Objetivo de entradas</div><div class="value" id="kpi-goal-entradas">—</div><div class="sub">meta del evento completo</div></div><div class="icon-badge">🏁</div></div>
     <div class="kpi roas"><div class="kpi-text"><div class="label">Objetivo alcanzado</div><div class="value" id="kpi-goal-pct">—</div><div class="sub" id="kpi-goal-pct-sub">—</div></div><div class="icon-badge">✅</div></div>
+    <div class="kpi"><div class="kpi-text"><div class="label">Ventas/día para el Soldout</div><div class="value" id="kpi-pace-needed">—</div><div class="sub" id="kpi-pace-sub">—</div></div><div class="icon-badge">⏱️</div></div>
   </div>
 
   <div class="goals" id="goals"></div>
@@ -289,7 +290,7 @@ const EVENTS = [
     eventDate: '2026-08-16',
     matchKeywords: ['cdmx', '16 agosto'],
     campaigns: [{ id:'120257677827110386', name:'CDMX16AGO_Ventas_TesteoOleada1' }],
-    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     metaAdsets: ['CDMX16AGO_TestA_RMKT','CDMX16AGO_TestB_LAL','CDMX16AGO_TestC_Advantage'],
     metaAds: [
       {name:'CDMX16AGO_BASE5H_VID_01', adset:'CDMX16AGO_TestB_LAL'},
@@ -310,7 +311,7 @@ const EVENTS = [
     eventDate: '2026-08-23',
     matchKeywords: ['mty', '23 agosto'],
     campaigns: [{ id:'120258012257390386', name:'MTY23AGO_Ventas_TesteoOleada1' }],
-    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     metaAdsets: ['MTY23AGO_TestA_RMKT','MTY23AGO_TestB_LAL','MTY23AGO_TestC_Advantage'],
     metaAds: [
       {name:'MTY23AGO_GIRA5H_VID_SINFECHA', adset:'MTY23AGO_TestA_RMKT'},
@@ -333,7 +334,7 @@ const EVENTS = [
     eventDate: '2026-08-29',
     matchKeywords: ['medellin', '29 agosto'],
     campaigns: [{ id:'120258063523740386', name:'MEDELLIN29AGO_Ventas_TesteoOleada1' }],
-    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     metaAdsets: ['MEDELLIN29AGO_TestA_RMKT','MEDELLIN29AGO_TestB_LAL','MEDELLIN29AGO_TestC_Advantage'],
     metaAds: [
       {name:'MEDELLIN29AGO_GIRA5H_VID_1', adset:'MEDELLIN29AGO_TestA_RMKT'},
@@ -354,7 +355,7 @@ const EVENTS = [
     eventDate: '2026-08-30',
     matchKeywords: ['bogota', '30 agosto'],
     campaigns: [{ id:'120258170319240386', name:'BOG30AGO_Ventas_TesteoOleada1' }],
-    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     metaAdsets: ['BOG30AGO_TestA_RMKT','BOG30AGO_TestB_LAL','BOG30AGO_TestC_Advantage'],
     metaAds: [
       {name:'BOG30AGO_GIRA5H_VID_1', adset:'BOG30AGO_TestA_RMKT'},
@@ -378,7 +379,7 @@ const EVENTS = [
     eventDate: '2026-09-05',
     matchKeywords: ['puebla', '5 sept'],
     campaigns: [{ id:'120258170702760386', name:'PUEBLA5SEPT_Ventas_TesteoOleada1' }],
-    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     metaAdsets: ['PUEBLA5SEPT_TestA_RMKT','PUEBLA5SEPT_TestB_LAL','PUEBLA5SEPT_TestC_Advantage'],
     metaAds: [
       {name:'PUEBLA5SEPT_GIRA5H_VID_1', adset:'PUEBLA5SEPT_TestA_RMKT'},
@@ -402,7 +403,7 @@ const EVENTS = [
     eventDate: '2026-09-13',
     matchKeywords: ['mty', '13 sept'],
     campaigns: [{ id:'120258547257190386', name:'MTY13SEP_Ventas_TesteoOleada1' }],
-    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     // ⚠️ Varios anuncios de esta campaña quedaron con el MISMO nombre repetido en
     // más de un conjunto (parece un error al duplicar conjuntos). El desglose por
     // anuncio/conjunto puede salir impreciso — los totales de la campaña (arriba)
@@ -428,7 +429,7 @@ const EVENTS = [
     eventDate: '2026-09-20',
     matchKeywords: ['cdmx', '20 sept'],
     campaigns: [{ id:'120258469592890386', name:'CDMX20SEP_Ventas_TesteoOleada1' }],
-    goals: { spendMin:3500, spendMax:4000, salesMin:190, salesMax:200 },
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     // ⚠️ Mismo caso: varios anuncios repiten nombre en más de un conjunto.
     // Ver nota en MTY13SEP arriba.
     metaAdsets: ['CDMX20SEP_TestA_RMKT','CDMX20SEP_TestB_LAL','CDMX20SEP_TestC_Advantage'],
@@ -469,8 +470,19 @@ let dailyChartRef, sourceChartRef, roasChartRef, cacChartRef;
 let store = { metaSpend:{}, adDaily:{}, adsetDaily:{}, sales:[] };
 
 function parseUS(dateStr){ return new Date(dateStr + ' 00:00:00'); }
-function fxFor(ev){ return ev.currency === 'COP' ? parseFloat(document.getElementById('fx-cop').value)||4100 : parseFloat(document.getElementById('fx-mxn').value)||18.5; }
+function fxFor(ev){ return ev.currency === 'COP' ? parseFloat(document.getElementById('fx-cop').value)||3200 : parseFloat(document.getElementById('fx-mxn').value)||17.2; }
 function fmtLocal(v, currency){ return '$'+v.toLocaleString('es-MX',{maximumFractionDigits:0})+' '+currency; }
+// Cuando min === max (meta única, no rango), muestra solo un número en vez de "190–190".
+function rangeStr(min, max, fmt){ return min===max ? fmt(min) : fmt(min)+'–'+fmt(max); }
+
+// Semáforo de CAC: objetivo esperado < $21 USD/entrada en todos los eventos.
+// Verde = vamos bien, amarillo = regular (hasta 25% por encima), rojo = mal.
+function semaforoCAC(cac){
+  if(!cac || cac<=0) return null;
+  if(cac <= 21) return { color:'#3ddc97', tag:'🟢 Bien' };
+  if(cac <= 26.25) return { color:'#ffd166', tag:'🟡 Regular' };
+  return { color:'#ff6b6b', tag:'🔴 Alto' };
+}
 
 function readCache(){
   try{ const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); return c; }catch(e){ return null; }
@@ -679,6 +691,10 @@ function renderResumen(){
   document.getElementById('rk-count').textContent = totalCount;
   document.getElementById('rk-entradas').textContent = totalEntradas;
   document.getElementById('rk-cac').textContent = totalEntradas>0 ? ('$'+cac.toFixed(2)+' USD') : '—';
+  const rkSem = semaforoCAC(cac);
+  const rkCacEl = document.getElementById('rk-cac');
+  rkCacEl.style.color = rkSem ? rkSem.color : '';
+  document.getElementById('rk-cac-sub').textContent = rkSem ? (rkSem.tag+' · objetivo <$21') : 'costo por boleto, USD · objetivo <$21';
   document.getElementById('rk-roas').textContent = roas.toFixed(2)+'x';
   document.getElementById('rk-roas-sub').textContent = '≈ $'+totalSalesUSD.toLocaleString('en-US',{maximumFractionDigits:0})+' USD en ventas';
 
@@ -721,6 +737,10 @@ function render(ev){
   document.getElementById('kpi-spend-sub').textContent = ev.campaigns.map(c=>c.name).join(', ');
   document.getElementById('kpi-roas').textContent = roas.toFixed(2)+'x';
   document.getElementById('kpi-cac-main').textContent = totalEntradas>0 ? ('$'+cac.toFixed(2)+' USD') : '—';
+  const cacSem = semaforoCAC(cac);
+  const cacMainEl = document.getElementById('kpi-cac-main');
+  cacMainEl.style.color = cacSem ? cacSem.color : '';
+  document.getElementById('kpi-cac-sub').textContent = cacSem ? (cacSem.tag+' · período seleccionado · objetivo <$21') : 'costo por entrada, período seleccionado · objetivo <$21';
 
   // % restante de presupuesto, objetivo de entradas y % ya alcanzado — SIEMPRE
   // sobre el acumulado TOTAL del evento (no el rango de fecha filtrado arriba),
@@ -732,11 +752,34 @@ function render(ev){
   document.getElementById('kpi-budget-left-sub').textContent =
     '$'+Math.max(0, ev.goals.spendMax-allSpendForGoals).toLocaleString('en-US',{maximumFractionDigits:0})+' USD libres de $'+ev.goals.spendMax.toLocaleString('en-US')+' USD';
 
-  document.getElementById('kpi-goal-entradas').textContent = ev.goals.salesMin+'–'+ev.goals.salesMax;
+  document.getElementById('kpi-goal-entradas').textContent = rangeStr(ev.goals.salesMin, ev.goals.salesMax, v=>String(v));
 
   const goalPct = ev.goals.salesMin>0 ? Math.min(100, (allEntradasForGoals/ev.goals.salesMin)*100) : 0;
   document.getElementById('kpi-goal-pct').textContent = goalPct.toFixed(0)+'%';
   document.getElementById('kpi-goal-pct-sub').textContent = allEntradasForGoals+' de '+ev.goals.salesMin+' entradas mínimas';
+
+  // Ventas/día necesarias para llegar al soldout (meta máxima) desde HOY hasta
+  // la fecha del evento. Mismo cálculo que usa el panel de escalamiento más
+  // abajo, pero mostrado también como tarjeta para verlo de un vistazo.
+  const remainToSoldout = Math.max(0, ev.goals.salesMax - allEntradasForGoals);
+  if(ev.eventDate){
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const eventDay0 = new Date(ev.eventDate+'T00:00:00');
+    const daysLeft0 = Math.max(0, Math.ceil((eventDay0 - today0) / 86400000));
+    if(remainToSoldout === 0){
+      document.getElementById('kpi-pace-needed').textContent = '🎉 Soldout';
+      document.getElementById('kpi-pace-sub').textContent = 'meta máxima de '+ev.goals.salesMax+' entradas ya alcanzada';
+    } else if(daysLeft0 > 0){
+      document.getElementById('kpi-pace-needed').textContent = (remainToSoldout/daysLeft0).toFixed(1)+'/día';
+      document.getElementById('kpi-pace-sub').textContent = 'faltan '+remainToSoldout+' entradas en '+daysLeft0+' días';
+    } else {
+      document.getElementById('kpi-pace-needed').textContent = remainToSoldout;
+      document.getElementById('kpi-pace-sub').textContent = 'el evento es hoy — faltan '+remainToSoldout+' para soldout';
+    }
+  } else {
+    document.getElementById('kpi-pace-needed').textContent = '—';
+    document.getElementById('kpi-pace-sub').textContent = 'sin fecha de evento configurada';
+  }
 
   const allSpend = Object.values(dailySpendAll).reduce((a,v)=>a+v.spend,0);
   const allEntradas = evSalesAll.reduce((a,r)=>a+r[3],0);
@@ -880,7 +923,7 @@ function render(ev){
       const dailyBudgetMax = (neededBudgetMax / daysLeft).toFixed(0);
       paceHtml = `<div class="goal-nums" style="margin-bottom:10px;">
         <span>Faltan <b>${daysLeft} días</b> para el evento (${eventDay.toLocaleDateString('es-MX',{day:'numeric',month:'long'})})</span>
-        <span>Ritmo necesario: <b>${paceMin}–${paceMax} entradas/día</b> · <b>$${dailyBudgetMin}–${dailyBudgetMax} USD/día</b></span>
+        <span>Ritmo necesario: <b>${rangeStr(paceMin,paceMax,v=>v)} entradas/día</b> · <b>$${rangeStr(dailyBudgetMin,dailyBudgetMax,v=>v)} USD/día</b></span>
       </div>`;
     } else if(daysLeft > 0 && remainMin === 0){
       paceHtml = `<div class="goal-nums" style="margin-bottom:10px;"><span>✅ Meta mínima de entradas ya alcanzada, con ${daysLeft} días restantes para el evento.</span></div>`;
@@ -893,11 +936,11 @@ function render(ev){
     `Con el costo promedio por entrada del evento ($${allCACEntrada.toFixed(2)} USD/entrada) y con el CAC del conjunto que mejor está convirtiendo.`;
 
   let scaleHtml = paceHtml + `<div class="goal-nums" style="margin-bottom:10px;">
-      <span>Faltan <b>${remainMin}–${remainMax}</b> entradas para la meta</span>
-      <span>Presupuesto restante en el plan: <b>$${budgetLeftMin.toLocaleString('en-US')}–${budgetLeftMax.toLocaleString('en-US')}</b> USD</span>
+      <span>Faltan <b>${rangeStr(remainMin,remainMax,v=>v)}</b> entradas para la meta</span>
+      <span>Presupuesto restante en el plan: <b>$${rangeStr(budgetLeftMin.toLocaleString('en-US'),budgetLeftMax.toLocaleString('en-US'),v=>v)}</b> USD</span>
     </div>
     <div class="goal-nums" style="margin-bottom:10px;">
-      <span>Con el CAC promedio del evento, para llegar a la meta necesitarías invertir <b>~$${Math.round(neededBudgetMin).toLocaleString('en-US')}–${Math.round(neededBudgetMax).toLocaleString('en-US')} USD</b> más</span>
+      <span>Con el CAC promedio del evento, para llegar a la meta necesitarías invertir <b>~$${rangeStr(Math.round(neededBudgetMin).toLocaleString('en-US'),Math.round(neededBudgetMax).toLocaleString('en-US'),v=>v)} USD</b> más</span>
     </div>`;
   if(bestAdset && bestCAC){
     const salesIfDoubled = Math.round((bestUsage.spend*2)/bestCAC);
@@ -928,9 +971,9 @@ function renderGoal(title, current, min, max, fmt){
     <div class="bar-track"><div class="bar-fill" style="width:${pctMax}%"></div><div class="bar-marker" style="left:${(min/max)*100}%"></div></div>
     <div class="goal-nums">
       <span>Llevas <b>${fmt(current)}</b></span>
-      <span>Faltan <b>${fmt(faltaMin)}–${fmt(faltaMax)}</b></span>
-      <span>Meta <b>${fmt(min)}–${fmt(max)}</b></span>
-      <span><b>${pctMin.toFixed(0)}%</b> del mínimo</span>
+      <span>Faltan <b>${rangeStr(faltaMin, faltaMax, fmt)}</b></span>
+      <span>Meta <b>${rangeStr(min, max, fmt)}</b></span>
+      <span><b>${pctMin.toFixed(0)}%</b> de la meta</span>
     </div>`;
   document.getElementById('goals').appendChild(el);
 }
