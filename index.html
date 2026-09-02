@@ -57,6 +57,28 @@
   .tab.active{background:linear-gradient(135deg, var(--accent), var(--accent-deep)); color:#03181a; border-color:transparent;
     box-shadow:0 4px 14px rgba(0,198,218,0.35);}
 
+  /* ---------- event dropdown (reemplaza los tabs cuando hay muchos eventos) ---------- */
+  .event-dropdown{position:relative; margin-bottom:16px; max-width:360px;}
+  .dropdown-toggle{width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:linear-gradient(135deg, var(--accent), var(--accent-deep)); color:#03181a; border:none;
+    padding:13px 16px; border-radius:14px; font-weight:700; font-size:0.86rem; cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,198,218,0.35);}
+  .dropdown-toggle .caret{transition:transform .15s; font-size:0.8rem;}
+  .dropdown-toggle.open .caret{transform:rotate(180deg);}
+  .dropdown-menu{position:absolute; top:calc(100% + 8px); left:0; right:0; z-index:30;
+    background:#08121Df5; border:1px solid var(--card-border); border-radius:14px; padding:8px;
+    backdrop-filter:blur(16px); box-shadow:0 14px 34px rgba(0,0,0,0.55); max-height:70vh; overflow-y:auto;}
+  .dropdown-item{display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--ink-dim);
+    padding:10px 12px; border-radius:10px; font-size:0.85rem; cursor:pointer; font-weight:600;}
+  .dropdown-item:hover{background:rgba(255,255,255,0.05); color:var(--ink);}
+  .dropdown-item.active{background:rgba(0,198,218,0.15); color:var(--accent-soft);}
+  .dropdown-group-label{padding:8px 12px 4px; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--ink-dim); font-weight:700;}
+  .dropdown-sep{border:none; border-top:1px solid var(--card-border); margin:6px 4px;}
+  .dropdown-toggle-past{display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--accent-soft);
+    padding:9px 12px; font-size:0.78rem; cursor:pointer; font-weight:600;}
+  .dropdown-toggle-past:hover{text-decoration:underline;}
+
   /* ---------- controls ---------- */
   .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;
     background:var(--card); border:1px solid var(--card-border); border-radius:16px; backdrop-filter:blur(12px);
@@ -165,7 +187,13 @@
     </div>
   </header>
 
-  <div class="tabs" id="tabs"></div>
+  <div class="event-dropdown" id="event-dropdown">
+    <button class="dropdown-toggle" id="dropdown-toggle" onclick="toggleDropdown()">
+      <span id="dropdown-label">📊 Resumen General</span>
+      <span class="caret">▾</span>
+    </button>
+    <div class="dropdown-menu" id="dropdown-menu" style="display:none;"></div>
+  </div>
 
   <div class="controls">
     <div id="period-btns" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
@@ -285,6 +313,7 @@
 const EVENTS = [
   {
     id: 'cdmx16ago',
+    active: false,
     label: '16 Ago · CDMX',
     currency: 'MXN',
     eventDate: '2026-08-16',
@@ -306,6 +335,7 @@ const EVENTS = [
   },
   {
     id: 'mty23ago',
+    active: false,
     label: '23 Ago · MTY',
     currency: 'MXN',
     eventDate: '2026-08-23',
@@ -329,6 +359,7 @@ const EVENTS = [
   },
   {
     id: 'medellin29ago',
+    active: false,
     label: '29 Ago · Medellín',
     currency: 'COP',
     eventDate: '2026-08-29',
@@ -350,6 +381,7 @@ const EVENTS = [
   },
   {
     id: 'bogota30ago',
+    active: false,
     label: '30 Ago · Bogotá',
     currency: 'COP',
     eventDate: '2026-08-30',
@@ -374,6 +406,7 @@ const EVENTS = [
   },
   {
     id: 'puebla5sept',
+    active: true,
     label: '5 Sept · Puebla',
     currency: 'MXN',
     eventDate: '2026-09-05',
@@ -398,6 +431,7 @@ const EVENTS = [
   },
   {
     id: 'mty13sep',
+    active: true,
     label: '13 Sept · MTY',
     currency: 'MXN',
     eventDate: '2026-09-13',
@@ -424,6 +458,7 @@ const EVENTS = [
   },
   {
     id: 'cdmx20sep',
+    active: false,
     label: '20 Sept · CDMX',
     currency: 'MXN',
     eventDate: '2026-09-20',
@@ -449,6 +484,37 @@ const EVENTS = [
       {name:'CDMX20SEP_GIRA5H_VID_06', adset:'CDMX20SEP_TestA_RMKT'},
       {name:'CDMX20SEP_GIRA5H_VID_03', adset:'CDMX20SEP_TestA_RMKT'},
     ],
+  },
+  {
+    id: 'medellin26sept',
+    active: true,
+    label: '26 Sept · Medellín',
+    currency: 'COP',
+    eventDate: '2026-09-26',
+    matchKeywords: ['medellin', '26 sept'],
+    campaigns: [{ id:'120259005835360386', name:'MEDELLIN26SEPT_Ventas_TesteoOleada1' }],
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
+    // ⚠️ PENDIENTE: no se pudo consultar Meta (conector caído) para traer los
+    // nombres reales de ad sets/anuncios — se agregó solo con el campaign_id.
+    // La inversión, ROAS, CAC y ritmo para el soldout SÍ funcionan bien (vienen
+    // del campaign_id directo). Las tablas "Anuncios con ventas" y "Conjuntos
+    // con ventas" van a salir vacías hasta que se complete esta lista.
+    metaAdsets: [],
+    metaAds: [],
+  },
+  {
+    id: 'bogota27sept',
+    active: true,
+    label: '27 Sept · Bogotá',
+    currency: 'COP',
+    eventDate: '2026-09-27',
+    matchKeywords: ['bogota', '27 sept'],
+    campaigns: [{ id:'120259011365670386', name:'BOG27SEPT_Ventas_TesteoOleada1' }],
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
+    // ⚠️ PENDIENTE: mismo caso que Medellín 26 Sept arriba — falta el desglose
+    // de ad sets/anuncios. Totales del evento sí están completos.
+    metaAdsets: [],
+    metaAds: [],
   },
 ];
 const GHL_LOCATION_ID = 'JevcH97yOMXW9tCaKWpT';
@@ -501,25 +567,64 @@ function matchesEvent(row, ev){
   return ev.matchKeywords.every(kw => text.includes(kw));
 }
 
-function initTabs(){
-  const tabsEl = document.getElementById('tabs');
-  tabsEl.innerHTML = '';
+let dropdownOpen = false;
+let showPastEvents = false;
 
-  const resumenBtn = document.createElement('button');
-  resumenBtn.className = 'tab' + (activeEventId==='resumen' ? ' active':'');
-  resumenBtn.textContent = '📊 Resumen General';
-  resumenBtn.onclick = ()=>{ activeEventId = 'resumen'; initTabs(); renderCurrent(); };
-  tabsEl.appendChild(resumenBtn);
-
-  EVENTS.forEach(ev=>{
-    const b = document.createElement('button');
-    b.className = 'tab' + (ev.id===activeEventId ? ' active':'');
-    b.textContent = ev.label;
-    // Cambiar de tab NO dispara red — todo ya está cargado. Solo re-renderiza.
-    b.onclick = ()=>{ activeEventId = ev.id; initTabs(); renderCurrent(); };
-    tabsEl.appendChild(b);
-  });
+function toggleDropdown(force){
+  dropdownOpen = force!==undefined ? force : !dropdownOpen;
+  document.getElementById('dropdown-menu').style.display = dropdownOpen ? 'block' : 'none';
+  document.getElementById('dropdown-toggle').classList.toggle('open', dropdownOpen);
 }
+
+function selectEvent(id){
+  activeEventId = id;
+  toggleDropdown(false);
+  renderTabsDropdown();
+  renderCurrent();
+}
+
+function togglePastEvents(){
+  showPastEvents = !showPastEvents;
+  renderTabsDropdown();
+}
+
+// Reemplaza los tabs (con 9 eventos ya no cabían cómodos) por un dropdown
+// compacto. Solo se listan de entrada los eventos con active:true — los demás
+// quedan detrás de "Mostrar eventos pasados" para no perder el acceso a su data.
+function renderTabsDropdown(){
+  const activeEvents = EVENTS.filter(e=>e.active);
+  const pastEvents = EVENTS.filter(e=>!e.active);
+
+  const currentLabel = activeEventId==='resumen'
+    ? '📊 Resumen General'
+    : (EVENTS.find(e=>e.id===activeEventId)?.label || 'Selecciona un evento');
+  document.getElementById('dropdown-label').textContent = currentLabel;
+
+  let html = `<button class="dropdown-item ${activeEventId==='resumen'?'active':''}" onclick="selectEvent('resumen')">📊 Resumen General</button>`;
+  html += `<hr class="dropdown-sep">`;
+  html += `<div class="dropdown-group-label">Eventos activos</div>`;
+  activeEvents.forEach(ev=>{
+    html += `<button class="dropdown-item ${ev.id===activeEventId?'active':''}" onclick="selectEvent('${ev.id}')">${ev.label}</button>`;
+  });
+  if(pastEvents.length){
+    html += `<hr class="dropdown-sep">`;
+    if(showPastEvents){
+      html += `<div class="dropdown-group-label">Eventos pasados</div>`;
+      pastEvents.forEach(ev=>{
+        html += `<button class="dropdown-item ${ev.id===activeEventId?'active':''}" onclick="selectEvent('${ev.id}')">${ev.label}</button>`;
+      });
+      html += `<button class="dropdown-toggle-past" onclick="togglePastEvents()">▲ Ocultar eventos pasados</button>`;
+    } else {
+      html += `<button class="dropdown-toggle-past" onclick="togglePastEvents()">▾ Mostrar eventos pasados (${pastEvents.length})</button>`;
+    }
+  }
+  document.getElementById('dropdown-menu').innerHTML = html;
+}
+
+document.addEventListener('click', (e)=>{
+  const dd = document.getElementById('event-dropdown');
+  if(dd && !dd.contains(e.target)) toggleDropdown(false);
+});
 
 function initPeriodButtons(){
   const wrap = document.getElementById('period-btns');
@@ -983,7 +1088,7 @@ document.getElementById('date-to').addEventListener('change', renderCurrent);
 document.getElementById('fx-mxn').addEventListener('change', renderCurrent);
 document.getElementById('fx-cop').addEventListener('change', renderCurrent);
 
-initTabs();
+renderTabsDropdown();
 initPeriodButtons();
 loadData();
 </script>
