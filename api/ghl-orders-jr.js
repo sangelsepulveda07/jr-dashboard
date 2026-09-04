@@ -83,10 +83,48 @@ const TICKET_BASE_BY_CURRENCY = {
   USD: 47,
   COP: 259000,
 };
+
+// Precio confirmado del order bump "Meet & Greet" en MXN (verificado contra
+// órdenes reales de Puebla: aparece exactamente en 12 órdenes, ej. $2,045 =
+// 1 boleto ($1,299) + Meet & Greet ($746); $3,344 = 2 boletos + 1 Meet & Greet).
+// ⚠️ Solo confirmado en MXN. Si el Meet & Greet también se vende en los eventos
+// de Colombia (COP) o USD, avisar para agregar el precio correspondiente aquí.
+const MXN_ORDER_BUMP = 746;
+const DISCOUNT_TIERS = [0, 0.05, 0.10, 0.15, 0.20, 0.25]; // % de descuento observados en cupones reales
+
+// Calcula cuántos BOLETOS (no bumps) trae una orden. El problema: un boleto
+// con descuento (ej. 2 boletos al 10% = $2,338.20) y un boleto + Meet & Greet
+// (ej. 1 boleto + bump = $2,045) pueden aterrizar en montos parecidos, así que
+// no basta con dividir el monto entre el precio base — hay que probar
+// combinaciones de (# boletos, % descuento, # bumps) y quedarnos con la que
+// más se acerque EXACTO al monto real de la orden.
 function estimateEntradas(amount, currency) {
   const base = TICKET_BASE_BY_CURRENCY[currency] || TICKET_BASE_BY_CURRENCY.MXN;
   if (!amount || amount <= 0) return 0;
-  return Math.max(1, Math.round(amount / base));
+
+  // Fuera de MXN no tenemos confirmado el precio del bump — mismo cálculo de siempre.
+  if (currency !== "MXN") {
+    return Math.max(1, Math.round(amount / base));
+  }
+
+  const maxTickets = 6;
+  const maxBumps = 3;
+  let best = { k: Math.max(1, Math.round(amount / base)), diff: Infinity };
+
+  for (let n = 0; n <= maxBumps; n++) {
+    const remaining = amount - n * MXN_ORDER_BUMP;
+    if (remaining <= 0) continue;
+    for (let k = 1; k <= maxTickets; k++) {
+      for (const d of DISCOUNT_TIERS) {
+        const predicted = k * base * (1 - d);
+        const diff = Math.abs(remaining - predicted);
+        if (diff < best.diff - 0.005) { // tolerancia de centavos por redondeo de punto flotante
+          best = { k, diff };
+        }
+      }
+    }
+  }
+  return best.k;
 }
 
 async function fetchOrdersPage(locationId, offset) {
