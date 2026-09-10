@@ -492,7 +492,15 @@ const EVENTS = [
     currency: 'COP',
     eventDate: '2026-09-26',
     matchKeywords: ['medellin', '26 sept'],
-    campaigns: [{ id:'120259005835360386', name:'MEDELLIN26SEPT_Ventas_TesteoOleada1' }],
+    // Un solo evento, VARIAS campañas de Meta: la original + 3 de escalamiento
+    // (mismo público/oferta, separadas solo por estrategia de puja). El
+    // dashboard suma el gasto de las 4 en esta misma pestaña.
+    campaigns: [
+      { id:'120259005835360386', name:'MEDELLIN26SEPT_Ventas_TesteoOleada1' },
+      { id:'120259165786570386', name:'CBO ESCALA MEDELLÍN - PUJA MAX VALOR CONVERSIONES' },
+      { id:'120259165680060386', name:'CBO ESCALA MEDELLÍN - PUJA ROAS OBJ 2.0' },
+      { id:'120259165660250386', name:'CBO ESCALA MEDELLÍN - PUJA CPR' },
+    ],
     goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     // ⚠️ PENDIENTE: no se pudo consultar Meta (conector caído) para traer los
     // nombres reales de ad sets/anuncios — se agregó solo con el campaign_id.
@@ -513,6 +521,33 @@ const EVENTS = [
     goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
     // ⚠️ PENDIENTE: mismo caso que Medellín 26 Sept arriba — falta el desglose
     // de ad sets/anuncios. Totales del evento sí están completos.
+    metaAdsets: [],
+    metaAds: [],
+  },
+  {
+    id: 'puebla3oct',
+    active: true,
+    label: '3 Oct · Puebla',
+    currency: 'MXN',
+    eventDate: '2026-10-03',
+    matchKeywords: ['puebla', '3 oct'],
+    campaigns: [{ id:'120259096823870386', name:'PUEBLA3OCT-Ventas-TesteoOleada1' }],
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
+    // ⚠️ PENDIENTE: falta el desglose de ad sets/anuncios (conector de Meta
+    // caído al momento de agregar este evento). Totales sí funcionan bien.
+    metaAdsets: [],
+    metaAds: [],
+  },
+  {
+    id: 'cdmx25oct',
+    active: true,
+    label: '25 Oct · CDMX',
+    currency: 'MXN',
+    eventDate: '2026-10-25',
+    matchKeywords: ['cdmx', '25 oct'],
+    campaigns: [{ id:'120259166165020386', name:'CDMX25OCT_Ventas_TesteoOleada1' }],
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
+    // ⚠️ PENDIENTE: mismo caso — falta el desglose de ad sets/anuncios.
     metaAdsets: [],
     metaAds: [],
   },
@@ -717,8 +752,20 @@ async function fetchFresh(blocking){
     const spendR = spendS.value, adR = adS.value, adsetR = adsetS.value;
     const metaSpend = {};
     EVENTS.forEach(ev=>{
-      const camp = ev.campaigns[0];
-      metaSpend[ev.id] = spendR?.[camp.id]?.daily || {};
+      // Un evento puede tener MÁS DE UNA campaña de Meta (ej. Medellín: la
+      // campaña original + campañas de escalamiento separadas por estrategia
+      // de puja). Sumamos gasto+clics día por día de TODAS las campañas del
+      // evento en un solo diccionario diario.
+      const merged = {};
+      ev.campaigns.forEach(camp=>{
+        const daily = spendR?.[camp.id]?.daily || {};
+        Object.entries(daily).forEach(([day, v])=>{
+          if(!merged[day]) merged[day] = { spend:0, clicks:0 };
+          merged[day].spend += v.spend || 0;
+          merged[day].clicks += v.clicks || 0;
+        });
+      });
+      metaSpend[ev.id] = merged;
     });
     store.metaSpend = metaSpend;
     store.adDaily = adR?.daily || {};
