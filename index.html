@@ -313,7 +313,6 @@
 const EVENTS = [
   {
     id: 'cdmx16ago',
-    active: false,
     label: '16 Ago · CDMX',
     currency: 'MXN',
     eventDate: '2026-08-16',
@@ -335,7 +334,6 @@ const EVENTS = [
   },
   {
     id: 'mty23ago',
-    active: false,
     label: '23 Ago · MTY',
     currency: 'MXN',
     eventDate: '2026-08-23',
@@ -359,7 +357,6 @@ const EVENTS = [
   },
   {
     id: 'medellin29ago',
-    active: false,
     label: '29 Ago · Medellín',
     currency: 'COP',
     eventDate: '2026-08-29',
@@ -381,7 +378,6 @@ const EVENTS = [
   },
   {
     id: 'bogota30ago',
-    active: false,
     label: '30 Ago · Bogotá',
     currency: 'COP',
     eventDate: '2026-08-30',
@@ -406,7 +402,6 @@ const EVENTS = [
   },
   {
     id: 'puebla5sept',
-    active: true,
     label: '5 Sept · Puebla',
     currency: 'MXN',
     eventDate: '2026-09-05',
@@ -431,7 +426,6 @@ const EVENTS = [
   },
   {
     id: 'mty13sep',
-    active: true,
     label: '13 Sept · MTY',
     currency: 'MXN',
     eventDate: '2026-09-13',
@@ -458,7 +452,6 @@ const EVENTS = [
   },
   {
     id: 'cdmx20sep',
-    active: false,
     label: '20 Sept · CDMX',
     currency: 'MXN',
     eventDate: '2026-09-20',
@@ -487,7 +480,6 @@ const EVENTS = [
   },
   {
     id: 'medellin26sept',
-    active: true,
     label: '26 Sept · Medellín',
     currency: 'COP',
     eventDate: '2026-09-26',
@@ -512,7 +504,6 @@ const EVENTS = [
   },
   {
     id: 'bogota27sept',
-    active: true,
     label: '27 Sept · Bogotá',
     currency: 'COP',
     eventDate: '2026-09-27',
@@ -526,7 +517,6 @@ const EVENTS = [
   },
   {
     id: 'puebla3oct',
-    active: true,
     label: '3 Oct · Puebla',
     currency: 'MXN',
     eventDate: '2026-10-03',
@@ -540,7 +530,6 @@ const EVENTS = [
   },
   {
     id: 'cdmx25oct',
-    active: true,
     label: '25 Oct · CDMX',
     currency: 'MXN',
     eventDate: '2026-10-25',
@@ -602,6 +591,17 @@ function matchesEvent(row, ev){
   return ev.matchKeywords.every(kw => text.includes(kw));
 }
 
+// Un evento se considera "activo" hasta el mismo día del evento (inclusive).
+// A partir del día SIGUIENTE, pasa solo automáticamente a "eventos pasados"
+// en el dropdown — no hace falta tocar código ni marcar nada a mano evento
+// por evento cuando ya se realizó.
+function isEventActive(ev){
+  if(!ev.eventDate) return true; // sin fecha configurada -> se asume activo, por seguridad
+  const today = new Date(); today.setHours(0,0,0,0);
+  const eventDay = new Date(ev.eventDate+'T00:00:00');
+  return today <= eventDay;
+}
+
 let dropdownOpen = false;
 let showPastEvents = false;
 
@@ -627,8 +627,8 @@ function togglePastEvents(){
 // compacto. Solo se listan de entrada los eventos con active:true — los demás
 // quedan detrás de "Mostrar eventos pasados" para no perder el acceso a su data.
 function renderTabsDropdown(){
-  const activeEvents = EVENTS.filter(e=>e.active);
-  const pastEvents = EVENTS.filter(e=>!e.active);
+  const activeEvents = EVENTS.filter(e=>isEventActive(e));
+  const pastEvents = EVENTS.filter(e=>!isEventActive(e));
 
   const currentLabel = activeEventId==='resumen'
     ? '📊 Resumen General'
