@@ -1016,8 +1016,20 @@ function render(ev){
   sales.forEach(r=>{ const c=r[7]; if(!c) return; if(!salesByAd[c]) salesByAd[c]={revenue:0,count:0,entradas:0};
     salesByAd[c].revenue+=r[2]; salesByAd[c].count+=1; salesByAd[c].entradas+=r[3]; });
 
+  // Unimos la lista de anuncios precargada a mano (ev.metaAds) con cualquier
+  // anuncio que aparezca en una venta REAL vía atribución de GHL pero que
+  // todavía no hayamos agregado (pasa cuando el conector de Meta estaba caído
+  // al crear el evento). Así la tabla nunca sale vacía solo por eso — y deja
+  // de depender de que alguien complete la lista a mano para ver los datos.
+  const UNASSIGNED_ADSET = '🕵️ Sin conjunto asignado (pendiente completar)';
+  const knownAdNames = new Set(ev.metaAds.map(a=>a.name));
+  const discoveredAds = Object.keys(salesByAd)
+    .filter(name => !knownAdNames.has(name))
+    .map(name => ({ name, adset: UNASSIGNED_ADSET }));
+  const allAdsForTable = [...ev.metaAds, ...discoveredAds];
+
   document.getElementById('ads-title').textContent = '🎬 Anuncios con ventas — ' + ev.campaigns.map(c=>c.name).join(', ');
-  const adsWithSales = ev.metaAds
+  const adsWithSales = allAdsForTable
     .map(ad=>{ const s = salesByAd[ad.name] || {revenue:0,count:0}; const usage = sumInRange(store.adDaily, ad.name, dayKeys); return { ad, s, usage }; })
     .filter(x=>x.s.count>0)
     .sort((a,b)=>b.s.revenue-a.s.revenue);
@@ -1033,9 +1045,22 @@ function render(ev){
   document.getElementById('adsets-title').textContent = '🏆 Conjuntos con ventas — ' + ev.campaigns.map(c=>c.name).join(', ');
   const revenueByAdset = {};
   ev.metaAdsets.forEach(name=>revenueByAdset[name]={revenue:0,count:0,entradas:0});
-  ev.metaAds.forEach(ad=>{ const s = salesByAd[ad.name]; if(s && revenueByAdset[ad.adset]){ revenueByAdset[ad.adset].revenue+=s.revenue; revenueByAdset[ad.adset].count+=s.count; revenueByAdset[ad.adset].entradas+=s.entradas; } });
-  const adsetsWithSales = ev.metaAdsets
-    .map(name=>{ const r = revenueByAdset[name]; const usage = sumInRange(store.adsetDaily, name, dayKeys); return { name, r, usage }; })
+  if(discoveredAds.length) revenueByAdset[UNASSIGNED_ADSET] = {revenue:0,count:0,entradas:0};
+  allAdsForTable.forEach(ad=>{ const s = salesByAd[ad.name]; if(s){
+    if(!revenueByAdset[ad.adset]) revenueByAdset[ad.adset] = {revenue:0,count:0,entradas:0};
+    revenueByAdset[ad.adset].revenue+=s.revenue; revenueByAdset[ad.adset].count+=s.count; revenueByAdset[ad.adset].entradas+=s.entradas;
+  } });
+  // Para el bucket "sin conjunto", el gasto se suma por ANUNCIO (store.adDaily)
+  // porque no tenemos el nombre real del conjunto al que pertenecen todavía.
+  function usageForAdset(name){
+    if(name === UNASSIGNED_ADSET){
+      return discoveredAds.reduce((acc,ad)=>{ const u=sumInRange(store.adDaily, ad.name, dayKeys); acc.spend+=u.spend; acc.clicks+=u.clicks; return acc; }, {spend:0,clicks:0});
+    }
+    return sumInRange(store.adsetDaily, name, dayKeys);
+  }
+  const allAdsetsForTable = [...ev.metaAdsets, ...(discoveredAds.length ? [UNASSIGNED_ADSET] : [])];
+  const adsetsWithSales = allAdsetsForTable
+    .map(name=>{ const r = revenueByAdset[name]; const usage = usageForAdset(name); return { name, r, usage }; })
     .filter(x=>x.r.entradas>0)
     .sort((a,b)=>b.r.revenue-a.r.revenue);
   document.getElementById('adsets-table').innerHTML = adsetsWithSales.length ? adsetsWithSales.map(({name,r,usage})=>{
@@ -1051,7 +1076,7 @@ function render(ev){
   const allCACEntrada = allEntradas>0 ? allSpend/allEntradas : 0;
   const bestAdset = adsetsWithSales[0]?.name;
   const bestR = bestAdset ? revenueByAdset[bestAdset] : {revenue:0,count:0,entradas:0};
-  const bestUsage = bestAdset ? sumInRange(store.adsetDaily, bestAdset, dayKeys) : {spend:0};
+  const bestUsage = bestAdset ? usageForAdset(bestAdset) : {spend:0};
   const bestCAC = bestAdset && bestR.entradas>0 && bestUsage.spend>0 ? bestUsage.spend/bestR.entradas : null;
   const remainMin = Math.max(0, ev.goals.salesMin - allEntradas);
   const remainMax = Math.max(0, ev.goals.salesMax - allEntradas);
