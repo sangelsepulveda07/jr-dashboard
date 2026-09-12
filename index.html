@@ -233,17 +233,10 @@
 
   <div class="goals" id="goals"></div>
 
-  <div class="grid2">
-    <div class="panel">
-      <h2>📅 Ventas y boletos por día</h2>
-      <p class="desc">Barras = ventas (USD) · el número arriba de cada barra es la cantidad de ventas ese día · línea = gasto Meta (USD)</p>
-      <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
-    </div>
-    <div class="panel">
-      <h2>🎯 Ventas por fuente</h2>
-      <p class="desc">Según atribución UTM de GHL</p>
-      <div class="chart-wrap"><canvas id="sourceChart"></canvas></div>
-    </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <h2>📅 Ventas y boletos por día</h2>
+    <p class="desc">Barras = ventas (USD) · el número arriba de cada barra es la cantidad de ventas ese día · línea = gasto Meta (USD)</p>
+    <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
   </div>
 
   <div class="grid3">
@@ -260,45 +253,15 @@
   </div>
 
   <div class="panel" style="margin-bottom:16px;">
-    <h2>🗓️ Detalle diario</h2>
+    <h2 id="attrib-title">🎯 Atribución de ventas</h2>
+    <p class="desc">Campaña, conjunto y anuncio según UTM de GHL (utm_campaign, utm_term = conjunto, utm_content = anuncio). Gasto y ROAS calculados sobre el período seleccionado arriba. Solo se muestran anuncios con al menos una venta atribuida.</p>
     <div class="table-scroll">
     <table>
-      <thead><tr><th>Fecha</th><th class="num"># Ventas</th><th class="num">Entradas</th><th class="num" id="th-ventas-local">Boletos Ventas</th><th class="num">Gasto (USD)</th><th class="num">ROAS</th><th class="num">CAC/entrada (USD)</th></tr></thead>
-      <tbody id="daily-table"></tbody>
+      <thead><tr><th>Anuncio</th><th>Conjunto</th><th>Campaña</th><th class="num">Entradas</th><th class="num">Ventas</th><th class="num">Gasto (USD)</th><th class="num">ROAS</th></tr></thead>
+      <tbody id="attrib-table"></tbody>
     </table>
     </div>
   </div>
-
-  <div class="panel" style="margin-bottom:16px;">
-    <h2 id="ads-title">🎬 Anuncios con ventas en el período</h2>
-    <p class="desc">Gasto, clics y ROAS calculados solo sobre el rango de fecha seleccionado arriba — no el acumulado total. Solo se muestran anuncios con al menos una venta atribuida en ese rango.</p>
-    <div class="table-scroll">
-    <table>
-      <thead><tr><th>Anuncio</th><th class="num">Gasto (USD)</th><th class="num">Clics</th><th class="num">Ventas atrib.</th><th class="num"># Ventas</th><th class="num">ROAS</th></tr></thead>
-      <tbody id="ads-table"></tbody>
-    </table>
-    </div>
-  </div>
-
-  <div class="grid2">
-    <div class="panel">
-      <h2>🚀 Cuánto podemos escalar para llegar a la meta</h2>
-      <p class="desc" id="scale-desc"></p>
-      <div id="scale-body"></div>
-    </div>
-    <div class="panel">
-      <h2 id="adsets-title">🏆 Conjuntos con ventas en el período</h2>
-      <p class="desc">Gasto y ROAS calculados solo sobre el rango de fecha seleccionado. Solo se muestran conjuntos con al menos una entrada atribuida en ese rango.</p>
-      <div class="table-scroll">
-      <table>
-        <thead><tr><th>Conjunto</th><th class="num">Gasto (USD)</th><th class="num">Entradas atrib.</th><th class="num">CAC/entrada</th><th class="num">ROAS</th></tr></thead>
-        <tbody id="adsets-table"></tbody>
-      </table>
-      </div>
-    </div>
-  </div>
-
-  <footer id="foot-note"></footer>
   </div>
 </div>
 
@@ -556,7 +519,7 @@ const CACHE_TTL_MS = 4 * 60 * 1000; // 4 min: dentro de esta ventana no vuelve a
 
 let activeEventId = 'resumen';
 let activePeriod = 'all';
-let dailyChartRef, sourceChartRef, roasChartRef, cacChartRef;
+let dailyChartRef, roasChartRef, cacChartRef;
 let store = { metaSpend:{}, adDaily:{}, adsetDaily:{}, sales:[] };
 
 function parseUS(dateStr){ return new Date(dateStr + ' 00:00:00'); }
@@ -860,7 +823,6 @@ function render(ev){
   const {from,to} = getRange();
 
   document.getElementById('kpi-ventas-label').textContent = 'Ventas ('+ev.currency+')';
-  document.getElementById('th-ventas-local').textContent = 'Ventas ('+ev.currency+')';
 
   const evSalesAll = (store.sales||[]).filter(r=>matchesEvent(r, ev));
   const sales = evSalesAll.filter(r=>{ const d=parseUS(r[0]); return !isNaN(d) && d>=from && d<=to; });
@@ -976,17 +938,6 @@ function render(ev){
     }]
   });
 
-  const bySource = {};
-  sales.forEach(r=>{ const s=(r[4]||'Orgánico/Directo').toLowerCase(); bySource[s]=(bySource[s]||0)+r[2]; });
-  const sEntries = Object.entries(bySource).sort((a,b)=>b[1]-a[1]);
-  if(sourceChartRef) sourceChartRef.destroy();
-  sourceChartRef = new Chart(document.getElementById('sourceChart'), {
-    type:'doughnut',
-    data:{ labels:sEntries.map(e=>e[0]), datasets:[{data:sEntries.map(e=>e[1]),
-      backgroundColor:['#00C6DA','#4d9fff','#3ddc97','#18606B','#5CE1F0','#8899aa'], borderColor:'#08121D', borderWidth:2}] },
-    options:{ maintainAspectRatio:true, plugins:{legend:{position:'bottom', labels:{color:'#A3A2A4', boxWidth:10, font:{size:11}}}} }
-  });
-
   if(roasChartRef) roasChartRef.destroy();
   roasChartRef = new Chart(document.getElementById('roasChart'), {
     type: 'line',
@@ -1003,138 +954,32 @@ function render(ev){
       scales:{ x:{ticks:{color:'#A3A2A4'}, grid:{color:'#ffffff0d'}}, y:{beginAtZero:true, ticks:{color:'#A3A2A4', callback:v=>'$'+v}, grid:{color:'#ffffff0d'}} } }
   });
 
-  document.getElementById('daily-table').innerHTML = dayKeys.map((k,i)=>`<tr>
-    <td>${k}</td><td class="num">${dayCounts[i]}</td>
-    <td class="num">${dayEntradas[i]}</td>
-    <td class="num">$${daySalesLocal[i].toLocaleString('es-MX')}</td>
-    <td class="num">$${daySpendUSD[i].toFixed(2)}</td>
-    <td class="num">${dayRoas[i]>0?dayRoas[i].toFixed(2)+'x':'—'}</td>
-    <td class="num">${dayCac[i]>0?'$'+dayCac[i].toFixed(2):'—'}</td>
-  </tr>`).join('') || '<tr><td colspan="7" style="color:var(--ink-dim)">Sin datos en este rango</td></tr>';
-
+  // ==========================================================================
+  // ATRIBUCIÓN DE VENTAS — una sola tarjeta: Anuncio · Conjunto · Campaña.
+  // Todo sale directo de la atribución real de GHL (utm_content = anuncio,
+  // utm_term = conjunto, campaign = campaña) — ya no depende de listas fijas
+  // precargadas a mano, así que nunca sale vacía por falta de configuración.
+  // ==========================================================================
+  document.getElementById('attrib-title').textContent = '🎯 Atribución de ventas — ' + ev.campaigns.map(c=>c.name).join(', ');
   const salesByAd = {};
-  sales.forEach(r=>{ const c=r[7]; if(!c) return; if(!salesByAd[c]) salesByAd[c]={revenue:0,count:0,entradas:0};
-    salesByAd[c].revenue+=r[2]; salesByAd[c].count+=1; salesByAd[c].entradas+=r[3]; });
-
-  // Unimos la lista de anuncios precargada a mano (ev.metaAds) con cualquier
-  // anuncio que aparezca en una venta REAL vía atribución de GHL pero que
-  // todavía no hayamos agregado (pasa cuando el conector de Meta estaba caído
-  // al crear el evento). Así la tabla nunca sale vacía solo por eso — y deja
-  // de depender de que alguien complete la lista a mano para ver los datos.
-  const UNASSIGNED_ADSET = '🕵️ Sin conjunto asignado (pendiente completar)';
-  const knownAdNames = new Set(ev.metaAds.map(a=>a.name));
-  const discoveredAds = Object.keys(salesByAd)
-    .filter(name => !knownAdNames.has(name))
-    .map(name => ({ name, adset: UNASSIGNED_ADSET }));
-  const allAdsForTable = [...ev.metaAds, ...discoveredAds];
-
-  document.getElementById('ads-title').textContent = '🎬 Anuncios con ventas — ' + ev.campaigns.map(c=>c.name).join(', ');
-  const adsWithSales = allAdsForTable
-    .map(ad=>{ const s = salesByAd[ad.name] || {revenue:0,count:0}; const usage = sumInRange(store.adDaily, ad.name, dayKeys); return { ad, s, usage }; })
-    .filter(x=>x.s.count>0)
+  sales.forEach(r=>{
+    const adName = r[7]; if(!adName) return;
+    if(!salesByAd[adName]) salesByAd[adName] = { revenue:0, entradas:0, adset:r[5]||'—', campaign:r[6]||'—' };
+    salesByAd[adName].revenue += r[2];
+    salesByAd[adName].entradas += r[3];
+  });
+  const attribRows = Object.entries(salesByAd)
+    .map(([adName, s])=>{ const usage = sumInRange(store.adDaily, adName, dayKeys); return { adName, s, usage }; })
     .sort((a,b)=>b.s.revenue-a.s.revenue);
-  document.getElementById('ads-table').innerHTML = adsWithSales.length ? adsWithSales.map(({ad,s,usage})=>{
+  document.getElementById('attrib-table').innerHTML = attribRows.length ? attribRows.map(({adName,s,usage})=>{
     const roasAd = usage.spend>0 ? (s.revenue/fx)/usage.spend : 0;
     const pillClass = roasAd>=1 ? 'good' : (roasAd>0 ? 'mid':'zero');
-    return `<tr><td>${ad.name}</td><td class="num">$${usage.spend.toFixed(2)}</td><td class="num">${usage.clicks}</td>
+    return `<tr><td>${adName}</td><td>${s.adset}</td><td>${s.campaign}</td>
+      <td class="num">${s.entradas}</td>
       <td class="num">$${s.revenue.toLocaleString('es-MX')} ${ev.currency}</td>
-      <td class="num">${s.count}</td>
+      <td class="num">$${usage.spend.toFixed(2)}</td>
       <td class="num"><span class="pill ${pillClass}">${roasAd>0?roasAd.toFixed(2)+'x':'—'}</span></td></tr>`;
-  }).join('') : '<tr><td colspan="6" style="color:var(--ink-dim)">Ningún anuncio tiene ventas atribuidas en este período — la mayoría de ventas llegan sin UTM (compra directa)</td></tr>';
-
-  document.getElementById('adsets-title').textContent = '🏆 Conjuntos con ventas — ' + ev.campaigns.map(c=>c.name).join(', ');
-  const revenueByAdset = {};
-  ev.metaAdsets.forEach(name=>revenueByAdset[name]={revenue:0,count:0,entradas:0});
-  if(discoveredAds.length) revenueByAdset[UNASSIGNED_ADSET] = {revenue:0,count:0,entradas:0};
-  allAdsForTable.forEach(ad=>{ const s = salesByAd[ad.name]; if(s){
-    if(!revenueByAdset[ad.adset]) revenueByAdset[ad.adset] = {revenue:0,count:0,entradas:0};
-    revenueByAdset[ad.adset].revenue+=s.revenue; revenueByAdset[ad.adset].count+=s.count; revenueByAdset[ad.adset].entradas+=s.entradas;
-  } });
-  // Para el bucket "sin conjunto", el gasto se suma por ANUNCIO (store.adDaily)
-  // porque no tenemos el nombre real del conjunto al que pertenecen todavía.
-  function usageForAdset(name){
-    if(name === UNASSIGNED_ADSET){
-      return discoveredAds.reduce((acc,ad)=>{ const u=sumInRange(store.adDaily, ad.name, dayKeys); acc.spend+=u.spend; acc.clicks+=u.clicks; return acc; }, {spend:0,clicks:0});
-    }
-    return sumInRange(store.adsetDaily, name, dayKeys);
-  }
-  const allAdsetsForTable = [...ev.metaAdsets, ...(discoveredAds.length ? [UNASSIGNED_ADSET] : [])];
-  const adsetsWithSales = allAdsetsForTable
-    .map(name=>{ const r = revenueByAdset[name]; const usage = usageForAdset(name); return { name, r, usage }; })
-    .filter(x=>x.r.entradas>0)
-    .sort((a,b)=>b.r.revenue-a.r.revenue);
-  document.getElementById('adsets-table').innerHTML = adsetsWithSales.length ? adsetsWithSales.map(({name,r,usage})=>{
-    const cacAs = r.entradas>0 ? usage.spend/r.entradas : 0;
-    const roasAs = usage.spend>0 ? (r.revenue/fx)/usage.spend : 0;
-    const pillClass = roasAs>=1 ? 'good' : (roasAs>0 ? 'mid':'zero');
-    return `<tr><td>${name}</td><td class="num">$${usage.spend.toFixed(2)}</td>
-      <td class="num">${r.entradas}</td>
-      <td class="num">${cacAs>0?'$'+cacAs.toFixed(2):'—'}</td>
-      <td class="num"><span class="pill ${pillClass}">${roasAs>0?roasAs.toFixed(2)+'x':'—'}</span></td></tr>`;
-  }).join('') : '<tr><td colspan="5" style="color:var(--ink-dim)">Ningún conjunto tiene entradas atribuidas en este período</td></tr>';
-
-  const allCACEntrada = allEntradas>0 ? allSpend/allEntradas : 0;
-  const bestAdset = adsetsWithSales[0]?.name;
-  const bestR = bestAdset ? revenueByAdset[bestAdset] : {revenue:0,count:0,entradas:0};
-  const bestUsage = bestAdset ? usageForAdset(bestAdset) : {spend:0};
-  const bestCAC = bestAdset && bestR.entradas>0 && bestUsage.spend>0 ? bestUsage.spend/bestR.entradas : null;
-  const remainMin = Math.max(0, ev.goals.salesMin - allEntradas);
-  const remainMax = Math.max(0, ev.goals.salesMax - allEntradas);
-  const budgetLeftMin = Math.max(0, ev.goals.spendMin - allSpend);
-  const budgetLeftMax = Math.max(0, ev.goals.spendMax - allSpend);
-  const neededBudgetMin = remainMin * allCACEntrada;
-  const neededBudgetMax = remainMax * allCACEntrada;
-
-  // Ritmo diario necesario: cuántas entradas/día hacen falta desde HOY hasta la
-  // fecha del evento para llegar a la meta (esto es lo que responde "día a día
-  // cuántas ventas necesito").
-  let paceHtml = '';
-  if(ev.eventDate){
-    const today0 = new Date(); today0.setHours(0,0,0,0);
-    const eventDay = new Date(ev.eventDate+'T00:00:00');
-    const daysLeft = Math.max(0, Math.ceil((eventDay - today0) / 86400000));
-    if(daysLeft > 0 && remainMin > 0){
-      const paceMin = (remainMin / daysLeft).toFixed(1);
-      const paceMax = (remainMax / daysLeft).toFixed(1);
-      const dailyBudgetMin = (neededBudgetMin / daysLeft).toFixed(0);
-      const dailyBudgetMax = (neededBudgetMax / daysLeft).toFixed(0);
-      paceHtml = `<div class="goal-nums" style="margin-bottom:10px;">
-        <span>Faltan <b>${daysLeft} días</b> para el evento (${eventDay.toLocaleDateString('es-MX',{day:'numeric',month:'long'})})</span>
-        <span>Ritmo necesario: <b>${rangeStr(paceMin,paceMax,v=>v)} entradas/día</b> · <b>$${rangeStr(dailyBudgetMin,dailyBudgetMax,v=>v)} USD/día</b></span>
-      </div>`;
-    } else if(daysLeft > 0 && remainMin === 0){
-      paceHtml = `<div class="goal-nums" style="margin-bottom:10px;"><span>✅ Meta mínima de entradas ya alcanzada, con ${daysLeft} días restantes para el evento.</span></div>`;
-    } else if(daysLeft === 0){
-      paceHtml = `<div class="goal-nums" style="margin-bottom:10px;"><span>📅 El evento es hoy.</span></div>`;
-    }
-  }
-
-  document.getElementById('scale-desc').textContent =
-    `Con el costo promedio por entrada del evento ($${allCACEntrada.toFixed(2)} USD/entrada) y con el CAC del conjunto que mejor está convirtiendo.`;
-
-  let scaleHtml = paceHtml + `<div class="goal-nums" style="margin-bottom:10px;">
-      <span>Faltan <b>${rangeStr(remainMin,remainMax,v=>v)}</b> entradas para la meta</span>
-      <span>Presupuesto restante en el plan: <b>$${rangeStr(budgetLeftMin.toLocaleString('en-US'),budgetLeftMax.toLocaleString('en-US'),v=>v)}</b> USD</span>
-    </div>
-    <div class="goal-nums" style="margin-bottom:10px;">
-      <span>Con el CAC promedio del evento, para llegar a la meta necesitarías invertir <b>~$${rangeStr(Math.round(neededBudgetMin).toLocaleString('en-US'),Math.round(neededBudgetMax).toLocaleString('en-US'),v=>v)} USD</b> más</span>
-    </div>`;
-  if(bestAdset && bestCAC){
-    const salesIfDoubled = Math.round((bestUsage.spend*2)/bestCAC);
-    scaleHtml += `<div class="goal-nums"><span>Mejor conjunto: <b>${bestAdset}</b> · CAC atribuido <b>$${bestCAC.toFixed(2)}</b></span>
-      <span>Si duplicas su presupuesto en este rango y mantiene el mismo CAC, proyecta ≈ <b>${salesIfDoubled} entradas</b> adicionales</span></div>`;
-  } else {
-    scaleHtml += `<div class="goal-nums"><span>Aún no hay suficientes entradas atribuidas a un conjunto específico en este período para proyectar con confianza.</span></div>`;
-  }
-  document.getElementById('scale-body').innerHTML = scaleHtml;
-
-  document.getElementById('foot-note').innerHTML =
-    `<b>Cómo leer este dashboard:</b> las ventas se leen de GoHighLevel y se asignan a cada evento según el producto comprado (no por location, ya que los 3 eventos comparten el mismo). ` +
-    `El gasto de Meta se calcula día por día desde la API de Meta, siempre coherente con el filtro de fecha elegido. ` +
-    `La inversión corresponde únicamente a <b>${ev.campaigns.map(c=>c.name).join(', ')}</b> en la cuenta <b>CP - Jony Respira</b>. ` +
-    `Los montos de este evento están en <b>${ev.currency}</b> — se convierten a USD con la tasa de cambio de arriba. ` +
-    `El ROAS total (KPI de arriba) cruza todas las ventas atribuidas a este evento contra el gasto; el ROAS por anuncio/conjunto es más conservador porque solo cuenta ventas con UTM explícito. ` +
-    `Los datos se cachean 4 minutos (local y en el servidor) para que la carga sea rápida — usa "↻ Actualizar" para forzar datos frescos.`;
+  }).join('') : '<tr><td colspan="7" style="color:var(--ink-dim)">Ninguna venta trae UTM de anuncio en este período — la mayoría llegan sin UTM (compra directa)</td></tr>';
 }
 
 function renderGoal(title, current, min, max, fmt){
