@@ -153,12 +153,16 @@ async function fetchContact(contactId) {
 }
 
 function hasUtm(src) {
-  return !!(src && (src.utmSource || src.utmMedium || src.utmContent || src.campaign));
+  return !!(src && (src.utmSource || src.utmTerm || src.utmContent || src.campaign));
 }
 
 // Ver nota de "ATRIBUCIÓN UTM" arriba para la lógica de prioridad.
+// ⚠️ IMPORTANTE: el CONJUNTO de anuncios viene de utm_term, NO de utm_medium.
+// utm_medium trae el placement (Instagram_Feed, Facebook_Mobile_Feed, etc.),
+// que no sirve para saber a qué conjunto pertenece la venta. utm_term sí trae
+// el nombre real del conjunto (confirmado contra la interfaz de GHL).
 function pickAttribution(contact) {
-  const empty = { utmSource: "", utmMedium: "", campaign: "", adName: "" };
+  const empty = { utmSource: "", adset: "", campaign: "", adName: "" };
   if (!contact) return empty;
 
   const last = contact.lastAttributionSource;
@@ -175,7 +179,7 @@ function pickAttribution(contact) {
 
   return {
     utmSource: src.utmSource || "",
-    utmMedium: src.utmMedium || "",
+    adset: src.utmTerm || "", // conjunto de anuncios (antes leíamos mal utmMedium aquí)
     campaign: src.campaign || "",
     adName: src.utmContent || "", // en este negocio, utm_content = nombre del anuncio (ej. MTY23AGO_GIRA5H_IMG_02)
   };
@@ -248,14 +252,14 @@ module.exports = async (req, res) => {
     const attrById = await enrichAttribution(newOrders);
 
     const enriched = newOrders.map((o) => {
-      const attr = attrById.get(o._id) || { utmSource: "", utmMedium: "", campaign: "", adName: "" };
+      const attr = attrById.get(o._id) || { utmSource: "", adset: "", campaign: "", adName: "" };
       return [
         fmtDate(o.createdAt),
         o.contactName || o.contactEmail || "Sin nombre",
         o.amount || 0,
         estimateEntradas(o.amount, o.currency || "MXN"),
         attr.utmSource,
-        attr.utmMedium,
+        attr.adset,
         attr.campaign,
         attr.adName,
         0, 0, // upsellCount, upsellAmount — no disponibles en este endpoint
