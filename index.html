@@ -418,6 +418,7 @@ const EVENTS = [
     label: '20 Sept · CDMX',
     currency: 'MXN',
     eventDate: '2026-09-20',
+    archived: true, // campaña dada de baja/reemplazada antes de su fecha — se fuerza a "pasados"
     matchKeywords: ['cdmx', '20 sept'],
     campaigns: [{ id:'120258469592890386', name:'CDMX20SEP_Ventas_TesteoOleada1' }],
     goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
@@ -558,7 +559,11 @@ function matchesEvent(row, ev){
 // A partir del día SIGUIENTE, pasa solo automáticamente a "eventos pasados"
 // en el dropdown — no hace falta tocar código ni marcar nada a mano evento
 // por evento cuando ya se realizó.
+// `archived: true` es la única excepción manual: sirve para forzar un evento
+// a "pasados" ANTES de su fecha (ej. se canceló o se reemplazó la campaña),
+// caso en el que la regla automática por fecha no aplicaría todavía.
 function isEventActive(ev){
+  if(ev.archived) return false;
   if(!ev.eventDate) return true; // sin fecha configurada -> se asume activo, por seguridad
   const today = new Date(); today.setHours(0,0,0,0);
   const eventDay = new Date(ev.eventDate+'T00:00:00');
