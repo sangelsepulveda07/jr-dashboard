@@ -504,6 +504,35 @@ const EVENTS = [
     metaAdsets: [],
     metaAds: [],
   },
+  {
+    id: 'mty11oct',
+    label: '11 Oct · MTY',
+    currency: 'MXN',
+    eventDate: '2026-10-11',
+    matchKeywords: ['mty', '11 oct'],
+    campaigns: [{ id:'120259233435420386', name:'MTY11OCT_Ventas_TesteoOleada1' }],
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
+    // ⚠️ PENDIENTE: falta el desglose de ad sets/anuncios.
+    metaAdsets: [],
+    metaAds: [],
+  },
+  {
+    id: 'gdl17oct',
+    label: '17 Oct · Guadalajara',
+    currency: 'MXN',
+    eventDate: '2026-10-17',
+    matchKeywords: ['guadalajara', '17 oct'],
+    // Mismo caso que Medellín: un evento, DOS campañas corriendo a la vez
+    // (motor + recuperación). El dashboard suma el gasto de ambas.
+    campaigns: [
+      { id:'120259354713880386', name:'GDL17OCT | CAMP 2 CBO MOTOR | 21-09-26 - Copia' },
+      { id:'120259354311980386', name:'GDL17OCT | CAMP 1 RECUPERACIÓN | 21-09-26' },
+    ],
+    goals: { spendMin:4000, spendMax:4000, salesMin:190, salesMax:190 },
+    // ⚠️ PENDIENTE: falta el desglose de ad sets/anuncios.
+    metaAdsets: [],
+    metaAds: [],
+  },
 ];
 const GHL_LOCATION_ID = 'JevcH97yOMXW9tCaKWpT';
 
