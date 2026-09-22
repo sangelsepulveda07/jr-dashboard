@@ -521,7 +521,9 @@ const EVENTS = [
     label: '17 Oct · Guadalajara',
     currency: 'MXN',
     eventDate: '2026-10-17',
-    matchKeywords: ['guadalajara', '17 oct'],
+    // El producto en GHL se llama "Respiracion GDL - 17 Oct", con la ciudad
+    // abreviada — por eso la palabra clave es 'gdl' y no 'guadalajara'.
+    matchKeywords: ['gdl', '17 oct'],
     // Mismo caso que Medellín: un evento, DOS campañas corriendo a la vez
     // (motor + recuperación). El dashboard suma el gasto de ambas.
     campaigns: [
