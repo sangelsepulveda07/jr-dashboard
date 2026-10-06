@@ -109,7 +109,6 @@
   .table-scroll{overflow-x:auto;}
   .pill{display:inline-block; padding:3px 10px; border-radius:99px; font-size:0.66rem; font-weight:700;}
   .pill.good{background:rgba(61,220,151,0.15); color:var(--good);}
-  .pill.mid{background:rgba(255,209,102,0.15); color:#ffd166;}
   .pill.bad{background:rgba(255,107,107,0.15); color:var(--bad);}
   footer{margin-top:28px; font-size:0.72rem; color:var(--ink-dim); line-height:1.7; padding:16px 20px;
     background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);}
@@ -121,7 +120,7 @@
   <header>
     <div class="brand">
       <div class="breath-mark"></div>
-      <div><p class="eyebrow">Jony Respira · Tráfico Meta Ads</p><h1 class="display">Reporte de cierre · Eventos hasta el 5 de septiembre</h1></div>
+      <div><p class="eyebrow">Jony Respira · Tráfico Meta Ads</p><h1 class="display">Reporte de cierre · Eventos realizados hasta el 3 de octubre</h1></div>
     </div>
     <div class="meta-info">
       <span><span id="live-dot"></span><span id="live-label">cargando…</span></span>
@@ -131,7 +130,7 @@
   </header>
 
   <div class="controls">
-    <span>Campañas de venta de los eventos ya realizados: CDMX 16 Ago, MTY 23 Ago, Medellín 29 Ago, Bogotá 30 Ago y Puebla 5 Sept.</span>
+    <span>Campañas de venta de los 10 eventos ya realizados, del CDMX 16 Ago al Puebla 3 Oct.</span>
     <div class="fx-wrap">
       <label style="display:flex; align-items:center; gap:6px;">TC MXN→USD <input type="number" id="fx-mxn" value="17.2" step="0.1" min="1"></label>
       <label style="display:flex; align-items:center; gap:6px;">TC COP→USD <input type="number" id="fx-cop" value="3200" step="10" min="100"></label>
@@ -146,7 +145,7 @@
     <div class="kpi"><div class="kpi-text"><div class="label">Ganancia sobre pauta</div><div class="value" id="k-profit">—</div><div class="sub">ventas − inversión, USD</div></div><div class="icon-badge">📈</div></div>
     <div class="kpi"><div class="kpi-text"><div class="label">Eventos realizados</div><div class="value" id="k-events">—</div><div class="sub" id="k-events-sub">—</div></div><div class="icon-badge">📅</div></div>
     <div class="kpi roas"><div class="kpi-text"><div class="label">Entradas vendidas</div><div class="value" id="k-entradas">—</div><div class="sub" id="k-orders">—</div></div><div class="icon-badge">🎟️</div></div>
-    <div class="kpi usd"><div class="kpi-text"><div class="label">CAC promedio</div><div class="value" id="k-cac">—</div><div class="sub" id="k-cac-sub">costo por entrada · objetivo &lt;$21</div></div><div class="icon-badge">📉</div></div>
+    <div class="kpi usd"><div class="kpi-text"><div class="label">CAC promedio</div><div class="value" id="k-cac">—</div><div class="sub" id="k-cac-sub">costo por entrada · verde si &lt;$35</div></div><div class="icon-badge">📉</div></div>
     <div class="kpi"><div class="kpi-text"><div class="label">Ticket promedio</div><div class="value" id="k-ticket">—</div><div class="sub">por entrada, USD</div></div><div class="icon-badge">🧾</div></div>
   </div>
   <p class="resumen-note" id="resumen-note">Cargando datos de Meta y GoHighLevel…</p>
@@ -178,6 +177,7 @@
     El número de entradas por orden se estima a partir del monto (precio base, descuentos y Meet &amp; Greet), igual que en el dashboard en vivo.
     El ROAS es <b>cruzado</b>: compara todas las ventas del evento contra la inversión en Meta, sin importar si cada venta vino de un anuncio.
     Las ventas en MXN y COP se pasan a USD con los tipos de cambio de arriba.
+    <b>Colores:</b> ROAS de 1.5x o más y CAC por debajo de $35 USD en verde; el resto en rojo.
   </footer>
 </div>
 
@@ -185,7 +185,8 @@
 // ============================================================================
 // EVENTOS DEL REPORTE — mismos IDs de campaña y palabras clave que el
 // dashboard en vivo (/index.html). Solo los eventos ya realizados hasta el
-// 5 de septiembre.
+// 3 de octubre. Medellín 26 Sept suma además 4 copias de la campaña de
+// escalamiento "PUJA ROAS OBJ 2.0" que no están en el dashboard en vivo.
 // ============================================================================
 const EVENTS = [
   { id:'cdmx16ago',     label:'16 Ago · CDMX',     currency:'MXN', eventDate:'2026-08-16', matchKeywords:['cdmx','16 agosto'],
@@ -198,10 +199,29 @@ const EVENTS = [
     campaigns:[{ id:'120258170319240386', name:'BOG30AGO_Ventas_TesteoOleada1' }] },
   { id:'puebla5sept',   label:'5 Sept · Puebla',   currency:'MXN', eventDate:'2026-09-05', matchKeywords:['puebla','5 sept'],
     campaigns:[{ id:'120258170702760386', name:'PUEBLA5SEPT_Ventas_TesteoOleada1' }] },
+  { id:'mty13sep',      label:'13 Sept · MTY',      currency:'MXN', eventDate:'2026-09-13', matchKeywords:['mty','13 sept'],
+    campaigns:[{ id:'120258547257190386', name:'MTY13SEP_Ventas_TesteoOleada1' }] },
+  { id:'cdmx20sep',     label:'20 Sept · CDMX',     currency:'MXN', eventDate:'2026-09-20', matchKeywords:['cdmx','20 sept'],
+    campaigns:[{ id:'120258469592890386', name:'CDMX20SEP_Ventas_TesteoOleada1' }] },
+  { id:'medellin26sept', label:'26 Sept · Medellín', currency:'COP', eventDate:'2026-09-26', matchKeywords:['medellin','26 sept'],
+    campaigns:[
+      { id:'120259005835360386', name:'MEDELLIN26SEPT_Ventas_TesteoOleada1' },
+      { id:'120259165680060386', name:'CBO ESCALA MEDELLÍN - PUJA ROAS OBJ 2.0' },
+      { id:'120259229086350386', name:'CBO ESCALA MEDELLÍN - PUJA ROAS OBJ 2.0 - Copia' },
+      { id:'120259229086210386', name:'CBO ESCALA MEDELLÍN - PUJA ROAS OBJ 2.0 - Copia' },
+      { id:'120259229086400386', name:'CBO ESCALA MEDELLÍN - PUJA ROAS OBJ 2.0 - Copia' },
+      { id:'120259229086200386', name:'CBO ESCALA MEDELLÍN - PUJA ROAS OBJ 2.0 - Copia' },
+      { id:'120259165786570386', name:'CBO ESCALA MEDELLÍN - PUJA MAX VALOR CONVERSIONES' },
+      { id:'120259165660250386', name:'CBO ESCALA MEDELLÍN - PUJA CPR' },
+    ] },
+  { id:'bogota27sept',  label:'27 Sept · Bogotá',   currency:'COP', eventDate:'2026-09-27', matchKeywords:['bogota','27 sept'],
+    campaigns:[{ id:'120259011365670386', name:'BOG27SEPT_Ventas_TesteoOleada1' }] },
+  { id:'puebla3oct',    label:'3 Oct · Puebla',     currency:'MXN', eventDate:'2026-10-03', matchKeywords:['puebla','3 oct'],
+    campaigns:[{ id:'120259096823870386', name:'PUEBLA3OCT-Ventas-TesteoOleada1' }] },
 ];
 const GHL_LOCATION_ID = 'JevcH97yOMXW9tCaKWpT';
 const SALES_SINCE = '2026-06-15';
-const SALES_UNTIL = '2026-09-06';
+const SALES_UNTIL = '2026-10-03';
 const ALL_CAMPAIGN_IDS = EVENTS.flatMap(e => e.campaigns.map(c => c.id));
 
 let store = { spend:null, products:null };
@@ -212,11 +232,17 @@ function fmtUSD(v){ return '$'+v.toLocaleString('en-US',{maximumFractionDigits:0
 function fmtLocal(v, currency){ return '$'+v.toLocaleString('es-MX',{maximumFractionDigits:0})+' '+currency; }
 function fmtDay(d){ return d.toLocaleDateString('es-MX',{day:'numeric', month:'short'}); }
 
+// Umbrales de este reporte: CAC por debajo de $35 USD y ROAS de 1.5x o más = verde.
+const CAC_VERDE = 35;
+const ROAS_VERDE = 1.5;
 function semaforoCAC(cac){
   if(!cac || cac<=0) return null;
-  if(cac <= 21) return { color:'#3ddc97', tag:'🟢 Bien', cls:'good' };
-  if(cac <= 26.25) return { color:'#ffd166', tag:'🟡 Regular', cls:'mid' };
+  if(cac < CAC_VERDE) return { color:'#3ddc97', tag:'🟢 Bien', cls:'good' };
   return { color:'#ff6b6b', tag:'🔴 Alto', cls:'bad' };
+}
+function semaforoROAS(roas){
+  if(roas >= ROAS_VERDE) return { color:'#3ddc97', cls:'good' };
+  return { color:'#ff6b6b', cls:'bad' };
 }
 
 // Ignora acentos y emojis: "🇨🇴 Respiracion Bogotá" casa con 'bogota'.
@@ -251,10 +277,13 @@ async function loadData(){
 function computeRows(){
   return EVENTS.map(ev=>{
     const fx = fxFor(ev);
+    // Solo cuenta el gasto hasta el día del evento (inclusive).
+    const eventDay = new Date(ev.eventDate+'T00:00:00');
     let spend = 0, firstDay = null, lastDay = null;
     ev.campaigns.forEach(c=>{
       Object.entries(store.spend?.[c.id]?.daily || {}).forEach(([day, v])=>{
         if(!(v.spend > 0)) return;
+        if(new Date(day + ' 00:00:00') > eventDay) return;
         spend += v.spend;
         const d = new Date(day + ' 00:00:00');
         if(!firstDay || d < firstDay) firstDay = d;
@@ -287,21 +316,23 @@ function render(){
   document.getElementById('k-spend').textContent = fmtUSD(spend)+' USD';
   document.getElementById('k-spend-sub').textContent = 'gasto en Meta Ads, '+fmtDay(firstDay)+' → '+fmtDay(lastDay);
   document.getElementById('k-sales').textContent = fmtUSD(salesUSD)+' USD';
-  document.getElementById('k-roas').textContent = roas.toFixed(2)+'x';
+  const roasEl = document.getElementById('k-roas');
+  roasEl.textContent = roas.toFixed(2)+'x';
+  roasEl.style.color = semaforoROAS(roas).color;
   document.getElementById('k-roas-sub').textContent = 'por cada $1 invertido volvieron $'+roas.toFixed(2);
   const profit = salesUSD - spend;
   const profitEl = document.getElementById('k-profit');
   profitEl.textContent = (profit<0?'-':'')+fmtUSD(Math.abs(profit))+' USD';
   profitEl.style.color = profit>=0 ? 'var(--good)' : 'var(--bad)';
   document.getElementById('k-events').textContent = rows.length;
-  document.getElementById('k-events-sub').textContent = EVENTS.map(e=>e.label.split(' · ')[1]).join(', ');
+  document.getElementById('k-events-sub').textContent = EVENTS[0].label+' → '+EVENTS[EVENTS.length-1].label;
   document.getElementById('k-entradas').textContent = entradas.toLocaleString('es-MX');
   document.getElementById('k-orders').textContent = orders.toLocaleString('es-MX')+' órdenes pagadas';
   const cacEl = document.getElementById('k-cac');
   cacEl.textContent = '$'+cac.toFixed(2)+' USD';
   const sem = semaforoCAC(cac);
   cacEl.style.color = sem ? sem.color : '';
-  document.getElementById('k-cac-sub').textContent = sem ? (sem.tag+' · objetivo <$21') : 'costo por entrada · objetivo <$21';
+  document.getElementById('k-cac-sub').textContent = sem ? (sem.tag+' · verde si <$'+CAC_VERDE) : 'costo por entrada · verde si <$'+CAC_VERDE;
   document.getElementById('k-ticket').textContent = entradas>0 ? fmtUSD(salesUSD/entradas)+' USD' : '—';
 
   document.getElementById('resumen-note').innerHTML =
@@ -311,7 +342,7 @@ function render(){
 
   document.getElementById('events-table').innerHTML = rows.map(r=>{
     const s = semaforoCAC(r.cac);
-    const roasCls = r.roas>=3 ? 'good' : (r.roas>=1.5 ? 'mid' : 'bad');
+    const roasCls = semaforoROAS(r.roas).cls;
     return `<tr>
       <td><b>${r.ev.label}</b><span class="small">${r.ev.campaigns.map(c=>c.name).join(', ')}</span></td>
       <td>${r.firstDay ? fmtDay(r.firstDay)+' → '+fmtDay(r.lastDay) : '—'}</td>
@@ -328,7 +359,7 @@ function render(){
     <td>Total</td><td>${fmtDay(firstDay)} → ${fmtDay(lastDay)}</td>
     <td class="num">${fmtUSD(spend)}</td><td class="num">—</td><td class="num">${fmtUSD(salesUSD)}</td>
     <td class="num">${orders}</td><td class="num">${entradas}</td>
-    <td class="num">$${cac.toFixed(2)}</td><td class="num">${roas.toFixed(2)}x</td>
+    <td class="num" style="color:${sem?sem.color:''}">$${cac.toFixed(2)}</td><td class="num"><span class="pill ${semaforoROAS(roas).cls}">${roas.toFixed(2)}x</span></td>
   </tr>`;
 
   renderChart(rows);
