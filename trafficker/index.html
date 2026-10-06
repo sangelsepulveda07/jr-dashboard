@@ -63,7 +63,6 @@
   /* ---------- KPI stat cards ---------- */
   .kpis-resumen{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:14px;}
   @media(max-width:1000px){ .kpis-resumen{grid-template-columns:repeat(2,1fr);} }
-  @media(max-width:480px){ .kpis-resumen{grid-template-columns:1fr;} }
   .kpis-resumen .kpi .value{font-size:1.85rem;}
   .kpis-resumen .kpi .icon-badge{width:46px; height:46px; font-size:20px;}
   .resumen-note{font-size:0.75rem; color:var(--ink-dim); margin:0 0 26px; line-height:1.6; padding:12px 16px;
@@ -95,14 +94,14 @@
     padding:20px 20px 18px; backdrop-filter:blur(12px); position:relative; min-width:0; margin-bottom:16px;}
   .panel h2{font-size:0.92rem; margin:0 0 5px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px;}
   .panel .desc{font-size:0.75rem; color:var(--ink-dim); margin:0 0 16px;}
-  .chart-wrap{position:relative; width:100%;}
+  .chart-wrap{position:relative; width:100%; height:340px;}
 
   /* ---------- tables ---------- */
   table{width:100%; border-collapse:collapse; font-size:0.8rem;}
   th{text-align:left; color:var(--ink-dim); font-weight:600; font-size:0.65rem; text-transform:uppercase;
     letter-spacing:0.05em; padding:9px 8px; border-bottom:1px solid var(--card-border); white-space:nowrap;}
   td{padding:10px 8px; border-bottom:1px solid rgba(255,255,255,0.04); white-space:nowrap; color:var(--ink);}
-  td .small{display:block; font-size:0.68rem; color:var(--ink-dim); margin-top:2px;}
+  td .small{display:block; font-size:0.68rem; color:var(--ink-dim); margin-top:2px; white-space:normal; max-width:260px; line-height:1.4;}
   tr:hover td{background:rgba(0,198,218,0.03);}
   tfoot td{font-weight:800; border-top:1px solid var(--card-border); border-bottom:none;}
   .num{text-align:right; font-variant-numeric:tabular-nums;}
@@ -110,6 +109,41 @@
   .pill{display:inline-block; padding:3px 10px; border-radius:99px; font-size:0.66rem; font-weight:700;}
   .pill.good{background:rgba(61,220,151,0.15); color:var(--good);}
   .pill.bad{background:rgba(255,107,107,0.15); color:var(--bad);}
+  /* ---------- responsive ---------- */
+  @media(max-width:760px){
+    body{padding:14px 10px 40px;}
+    header{padding:12px 14px;}
+    h1{font-size:1.08rem;}
+    .meta-info{text-align:left; width:100%;}
+    .controls{padding:12px; margin-bottom:18px;}
+    .fx-wrap{margin-left:0; width:100%;}
+    .kpis-resumen{gap:10px;}
+    .kpi{padding:14px 12px 12px;}
+    .kpis-resumen .kpi .value{font-size:1.25rem;}
+    .kpis-resumen .kpi .icon-badge{display:none;}
+    .panel{padding:16px 12px 14px;}
+    .chart-wrap{height:420px;}
+
+    /* La tabla pasa a tarjetas: una por evento, sin scroll horizontal. */
+    #events-section thead{display:none;}
+    #events-section table, #events-section tbody, #events-section tfoot{display:block;}
+    #events-section tr{display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; padding:12px;
+      margin-bottom:10px; border:1px solid var(--card-border); border-radius:14px; background:rgba(255,255,255,0.02);}
+    #events-section tfoot tr{background:rgba(0,198,218,0.08); border-color:var(--accent-deep);}
+    #events-section td{display:flex; justify-content:space-between; align-items:center; gap:8px;
+      padding:4px 0; border:none; white-space:normal; text-align:right;}
+    #events-section td::before{content:attr(data-label); font-size:0.62rem; text-transform:uppercase;
+      letter-spacing:0.05em; color:var(--ink-dim); font-weight:600; text-align:left;}
+    #events-section td.cell-event, #events-section td.cell-dates{grid-column:1 / -1; display:block; text-align:left;}
+    #events-section td.cell-event::before, #events-section td.cell-dates::before{content:none;}
+    #events-section td.cell-dates{color:var(--ink-dim); font-size:0.74rem; padding-top:0;}
+    #events-section tfoot td{border-top:none;}
+    td .small{max-width:none;}
+    tr:hover td{background:transparent;}
+  }
+  @media(max-width:360px){
+    #events-section tr{grid-template-columns:1fr;}
+  }
   footer{margin-top:28px; font-size:0.72rem; color:var(--ink-dim); line-height:1.7; padding:16px 20px;
     background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);}
   footer b{color:var(--ink);}
@@ -153,10 +187,10 @@
   <div class="panel">
     <h2>📊 Inversión vs. ventas por evento</h2>
     <p class="desc">Barras en USD · el número arriba de cada par es el ROAS del evento</p>
-    <div class="chart-wrap"><canvas id="eventsChart" height="110"></canvas></div>
+    <div class="chart-wrap"><canvas id="eventsChart"></canvas></div>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="events-section">
     <h2>🎟️ Detalle por evento</h2>
     <p class="desc">Inversión = todo lo gastado en la(s) campaña(s) del evento. Ventas y entradas = todas las órdenes pagadas del producto del evento en GHL.</p>
     <div class="table-scroll">
@@ -240,6 +274,16 @@ function semaforoCAC(cac){
   if(cac < CAC_VERDE) return { color:'#3ddc97', tag:'🟢 Bien', cls:'good' };
   return { color:'#ff6b6b', tag:'🔴 Alto', cls:'bad' };
 }
+// Una sola línea por evento: la campaña principal y, si hay más (ej. Medellín
+// con sus campañas de escalamiento), cuántas son. La lista completa queda en el
+// tooltip al pasar el mouse.
+function campaignSummary(ev){
+  const [main, ...rest] = ev.campaigns;
+  const all = ev.campaigns.map(c=>c.name).join('\n').replace(/"/g,'&quot;');
+  const text = rest.length ? `${main.name} + ${rest.length} campañas de escalamiento` : main.name;
+  return `<span class="small" title="${all}">${text}</span>`;
+}
+
 function semaforoROAS(roas){
   if(roas >= ROAS_VERDE) return { color:'#3ddc97', cls:'good' };
   return { color:'#ff6b6b', cls:'bad' };
@@ -344,59 +388,78 @@ function render(){
     const s = semaforoCAC(r.cac);
     const roasCls = semaforoROAS(r.roas).cls;
     return `<tr>
-      <td><b>${r.ev.label}</b><span class="small">${r.ev.campaigns.map(c=>c.name).join(', ')}</span></td>
-      <td>${r.firstDay ? fmtDay(r.firstDay)+' → '+fmtDay(r.lastDay) : '—'}</td>
-      <td class="num">${fmtUSD(r.spend)}</td>
-      <td class="num">${fmtLocal(r.salesLocal, r.ev.currency)}</td>
-      <td class="num">${fmtUSD(r.salesUSD)}</td>
-      <td class="num">${r.orders}</td>
-      <td class="num">${r.entradas}</td>
-      <td class="num" style="color:${s?s.color:''}">${r.entradas>0 ? '$'+r.cac.toFixed(2) : '—'}</td>
-      <td class="num"><span class="pill ${roasCls}">${r.roas.toFixed(2)}x</span></td>
+      <td class="cell-event"><b>${r.ev.label}</b>${campaignSummary(r.ev)}</td>
+      <td class="cell-dates" data-label="Pauta activa">${r.firstDay ? 'Pauta: '+fmtDay(r.firstDay)+' → '+fmtDay(r.lastDay) : '—'}</td>
+      <td class="num" data-label="Inversión">${fmtUSD(r.spend)}</td>
+      <td class="num" data-label="Ventas ${r.ev.currency}">${fmtLocal(r.salesLocal, r.ev.currency)}</td>
+      <td class="num" data-label="Ventas USD">${fmtUSD(r.salesUSD)}</td>
+      <td class="num" data-label="Órdenes">${r.orders}</td>
+      <td class="num" data-label="Entradas">${r.entradas}</td>
+      <td class="num" data-label="CAC" style="color:${s?s.color:''}">${r.entradas>0 ? '$'+r.cac.toFixed(2) : '—'}</td>
+      <td class="num" data-label="ROAS"><span class="pill ${roasCls}">${r.roas.toFixed(2)}x</span></td>
     </tr>`;
   }).join('');
   document.getElementById('events-total').innerHTML = `<tr>
-    <td>Total</td><td>${fmtDay(firstDay)} → ${fmtDay(lastDay)}</td>
-    <td class="num">${fmtUSD(spend)}</td><td class="num">—</td><td class="num">${fmtUSD(salesUSD)}</td>
-    <td class="num">${orders}</td><td class="num">${entradas}</td>
-    <td class="num" style="color:${sem?sem.color:''}">$${cac.toFixed(2)}</td><td class="num"><span class="pill ${semaforoROAS(roas).cls}">${roas.toFixed(2)}x</span></td>
+    <td class="cell-event">Total · ${rows.length} eventos</td><td class="cell-dates" data-label="Pauta activa">Pauta: ${fmtDay(firstDay)} → ${fmtDay(lastDay)}</td>
+    <td class="num" data-label="Inversión">${fmtUSD(spend)}</td><td class="num" data-label="Ventas local">—</td><td class="num" data-label="Ventas USD">${fmtUSD(salesUSD)}</td>
+    <td class="num" data-label="Órdenes">${orders}</td><td class="num" data-label="Entradas">${entradas}</td>
+    <td class="num" data-label="CAC" style="color:${sem?sem.color:''}">$${cac.toFixed(2)}</td><td class="num" data-label="ROAS"><span class="pill ${semaforoROAS(roas).cls}">${roas.toFixed(2)}x</span></td>
   </tr>`;
 
   renderChart(rows);
 }
 
+// En pantallas angostas las barras van horizontales: 10 eventos verticales no
+// caben legibles en un celular.
+function isNarrow(){ return window.matchMedia('(max-width:760px)').matches; }
+
 function renderChart(rows){
   if(eventsChartRef) eventsChartRef.destroy();
+  const horizontal = isNarrow();
+  const money = v=>'$'+v.toLocaleString('en-US');
+  const valueAxis = {beginAtZero:true, ticks:{color:'#A3A2A4', callback:money, maxTicksLimit: horizontal ? 4 : 8}, grid:{color:'#ffffff0d'}};
+  const labelAxis = {ticks:{color:'#A3A2A4', autoSkip:false, font:{size: horizontal ? 10 : 12}}, grid:{color:'#ffffff0d'}};
   eventsChartRef = new Chart(document.getElementById('eventsChart'), {
     type:'bar',
     data:{ labels: rows.map(r=>r.ev.label), datasets:[
       {label:'Inversión Meta (USD)', data: rows.map(r=>Math.round(r.spend)), backgroundColor:'#4d9fffcc', borderRadius:6},
       {label:'Ventas (USD)', data: rows.map(r=>Math.round(r.salesUSD)), backgroundColor:'#00C6DAcc', borderRadius:6},
     ]},
-    options:{ responsive:true, interaction:{mode:'index',intersect:false},
-      layout:{padding:{top:22}},
-      plugins:{ legend:{labels:{color:'#A3A2A4'}},
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis: horizontal ? 'y' : 'x',
+      interaction:{mode:'index',intersect:false},
+      layout:{padding: horizontal ? {right:44} : {top:22}},
+      plugins:{ legend:{labels:{color:'#A3A2A4', boxWidth:12, font:{size: horizontal ? 11 : 12}}},
         tooltip:{callbacks:{
-          label:(item)=>item.dataset.label+': $'+item.raw.toLocaleString('en-US'),
+          label:(item)=>item.dataset.label+': '+money(item.raw),
           afterBody:(items)=>{ const r=rows[items[0].dataIndex]; return 'ROAS: '+r.roas.toFixed(2)+'x · Entradas: '+r.entradas; }
         }} },
-      scales:{ x:{ticks:{color:'#A3A2A4'}, grid:{color:'#ffffff0d'}},
-               y:{beginAtZero:true, ticks:{color:'#A3A2A4', callback:v=>'$'+v.toLocaleString('en-US')}, grid:{color:'#ffffff0d'}} } },
+      scales: horizontal ? { y:labelAxis, x:valueAxis } : { x:labelAxis, y:valueAxis } },
     plugins:[{
       id:'roasLabels',
       afterDatasetsDraw(chart){
         const {ctx} = chart; const a = chart.getDatasetMeta(0), b = chart.getDatasetMeta(1);
-        ctx.save(); ctx.fillStyle='#F1F2F2'; ctx.font='700 11px Inter, sans-serif'; ctx.textAlign='center';
+        ctx.save(); ctx.fillStyle='#F1F2F2'; ctx.font='700 11px Inter, sans-serif';
         rows.forEach((r,i)=>{
-          const x = (a.data[i].x + b.data[i].x)/2;
-          const y = Math.min(a.data[i].y, b.data[i].y) - 8;
-          ctx.fillText(r.roas.toFixed(2)+'x', x, y);
+          if(horizontal){
+            ctx.textAlign='left'; ctx.textBaseline='middle';
+            ctx.fillText(r.roas.toFixed(2)+'x', Math.max(a.data[i].x, b.data[i].x) + 6, (a.data[i].y + b.data[i].y)/2);
+          } else {
+            ctx.textAlign='center';
+            ctx.fillText(r.roas.toFixed(2)+'x', (a.data[i].x + b.data[i].x)/2, Math.min(a.data[i].y, b.data[i].y) - 8);
+          }
         });
         ctx.restore();
       }
     }]
   });
 }
+
+// Si se gira el celular o se cambia el ancho de la ventana, se redibuja la
+// gráfica solo cuando cambia de vertical a horizontal (o al revés).
+let lastNarrow = isNarrow();
+window.addEventListener('resize', ()=>{
+  if(isNarrow() !== lastNarrow){ lastNarrow = isNarrow(); render(); }
+});
 
 ['fx-mxn','fx-cop'].forEach(id=>document.getElementById(id).addEventListener('input', render));
 loadData();
