@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jony Respira · Reporte Trafficker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#030408; --bg-soft:#08121D; --card:#08121De6; --card-border:#1B333A;
+    --ink:#F1F2F2; --ink-dim:#A3A2A4; --accent:#00C6DA; --accent-soft:#5CE1F0; --accent-deep:#18606B;
+    --meta:#4d9fff; --good:#3ddc97; --bad:#ff6b6b; --radius:20px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(900px 480px at 8% -8%, rgba(0,198,218,0.16) 0%, transparent 60%),
+      radial-gradient(700px 420px at 100% 0%, rgba(24,96,107,0.22) 0%, transparent 55%),
+      radial-gradient(1000px 600px at 50% 110%, rgba(0,198,218,0.08) 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    min-height:100vh; padding:24px 16px 60px;
+  }
+  .display{font-family:Georgia,'Iowan Old Style',serif; font-weight:500; letter-spacing:-0.01em;}
+  .wrap{max-width:1220px; margin:0 auto;}
+
+  /* ---------- header ---------- */
+  header{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;
+    margin-bottom:22px; padding:14px 20px; border-radius:18px;
+    background:linear-gradient(135deg, rgba(24,96,107,0.25), rgba(8,18,29,0.6));
+    border:1px solid var(--card-border); backdrop-filter:blur(12px);}
+  .brand{display:flex; align-items:center; gap:14px; min-width:0;}
+  .breath-mark{width:42px; height:42px; border-radius:13px; flex-shrink:0; position:relative;
+    display:flex; align-items:center; justify-content:center; font-size:19px;
+    background:linear-gradient(140deg, var(--accent), var(--accent-deep));
+    box-shadow: 0 0 0 5px rgba(0,198,218,0.10), 0 6px 18px rgba(0,198,218,0.28);
+    animation: breathe 5.5s ease-in-out infinite;}
+  .breath-mark::after{content:'🫁';}
+  @keyframes breathe{0%,100%{transform:scale(0.92);} 50%{transform:scale(1);}}
+  @media (prefers-reduced-motion: reduce){ .breath-mark{animation:none;} }
+  h1{font-size:1.32rem; margin:0; line-height:1.2; color:var(--ink);}
+  .eyebrow{font-size:0.66rem; text-transform:uppercase; letter-spacing:0.14em; color:var(--accent-soft); margin:0 0 3px; font-weight:700;}
+  .meta-info{text-align:right; font-size:0.78rem; color:var(--ink-dim);}
+  .meta-info span{display:block;}
+  .meta-info a{color:var(--accent-soft); text-decoration:none;}
+  .meta-info a:hover{text-decoration:underline;}
+  #live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ink-dim); margin-right:6px;}
+  #live-dot.ok{background:var(--good); box-shadow:0 0 8px var(--good);}
+  #live-dot.off{background:var(--bad); box-shadow:0 0 8px var(--bad);}
+  #live-dot.cache{background:var(--meta); box-shadow:0 0 8px var(--meta);}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    background:var(--card); border:1px solid var(--card-border); border-radius:16px; backdrop-filter:blur(12px);
+    padding:12px 16px; margin-bottom:26px; font-size:0.82rem; color:var(--ink-dim);}
+  .controls input[type=number]{width:76px; background:rgba(255,255,255,0.03); border:1px solid var(--card-border); color:var(--ink);
+    border-radius:9px; padding:6px 9px; font-size:0.78rem;}
+  .fx-wrap{display:flex; align-items:center; gap:12px; margin-left:auto; flex-wrap:wrap;}
+  .btn{background:linear-gradient(135deg, var(--accent), var(--accent-deep)); color:#03181a; border:none; border-radius:11px;
+    padding:8px 16px; font-weight:700; font-size:0.78rem; cursor:pointer; box-shadow:0 4px 14px rgba(0,198,218,0.3);}
+
+  /* ---------- KPI stat cards ---------- */
+  .kpis-resumen{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:14px;}
+  @media(max-width:1000px){ .kpis-resumen{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:480px){ .kpis-resumen{grid-template-columns:1fr;} }
+  .kpis-resumen .kpi .value{font-size:1.85rem;}
+  .kpis-resumen .kpi .icon-badge{width:46px; height:46px; font-size:20px;}
+  .resumen-note{font-size:0.75rem; color:var(--ink-dim); margin:0 0 26px; line-height:1.6; padding:12px 16px;
+    background:rgba(0,198,218,0.06); border:1px solid var(--card-border); border-radius:12px;}
+  .kpi{background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);
+    padding:18px 18px 16px; backdrop-filter:blur(12px); position:relative; overflow:hidden;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    transition:transform .15s, border-color .15s; min-width:0;}
+  .kpi:hover{transform:translateY(-2px); border-color:var(--accent-deep);}
+  .kpi::before{content:''; position:absolute; inset:0 0 auto 0; height:2px;
+    background:linear-gradient(90deg, transparent, var(--accent), transparent); opacity:0.5;}
+  .kpi .kpi-text{min-width:0;}
+  .kpi .label{font-size:0.66rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:8px; font-weight:600;}
+  .kpi .value{font-size:1.5rem; font-weight:800; color:var(--ink); letter-spacing:-0.01em;}
+  .kpi .sub{font-size:0.72rem; color:var(--ink-dim); margin-top:5px;}
+  .kpi.roas .value{color:var(--accent-soft);}
+  .kpi.usd .value{color:var(--meta);}
+  .icon-badge{width:42px; height:42px; min-width:42px; border-radius:13px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+    background:linear-gradient(140deg, var(--accent), var(--accent-deep));
+    box-shadow:0 4px 12px rgba(0,198,218,0.28);}
+  .kpi.usd .icon-badge{background:linear-gradient(140deg, var(--meta), #1f4fa8);
+    box-shadow:0 4px 12px rgba(77,159,255,0.28);}
+  .kpi.roas .icon-badge{background:linear-gradient(140deg, var(--accent-soft), var(--accent-deep));
+    box-shadow:0 4px 12px rgba(92,225,240,0.28);}
+
+  /* ---------- panels ---------- */
+  .panel{background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);
+    padding:20px 20px 18px; backdrop-filter:blur(12px); position:relative; min-width:0; margin-bottom:16px;}
+  .panel h2{font-size:0.92rem; margin:0 0 5px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px;}
+  .panel .desc{font-size:0.75rem; color:var(--ink-dim); margin:0 0 16px;}
+  .chart-wrap{position:relative; width:100%;}
+
+  /* ---------- tables ---------- */
+  table{width:100%; border-collapse:collapse; font-size:0.8rem;}
+  th{text-align:left; color:var(--ink-dim); font-weight:600; font-size:0.65rem; text-transform:uppercase;
+    letter-spacing:0.05em; padding:9px 8px; border-bottom:1px solid var(--card-border); white-space:nowrap;}
+  td{padding:10px 8px; border-bottom:1px solid rgba(255,255,255,0.04); white-space:nowrap; color:var(--ink);}
+  td .small{display:block; font-size:0.68rem; color:var(--ink-dim); margin-top:2px;}
+  tr:hover td{background:rgba(0,198,218,0.03);}
+  tfoot td{font-weight:800; border-top:1px solid var(--card-border); border-bottom:none;}
+  .num{text-align:right; font-variant-numeric:tabular-nums;}
+  .table-scroll{overflow-x:auto;}
+  .pill{display:inline-block; padding:3px 10px; border-radius:99px; font-size:0.66rem; font-weight:700;}
+  .pill.good{background:rgba(61,220,151,0.15); color:var(--good);}
+  .pill.mid{background:rgba(255,209,102,0.15); color:#ffd166;}
+  .pill.bad{background:rgba(255,107,107,0.15); color:var(--bad);}
+  footer{margin-top:28px; font-size:0.72rem; color:var(--ink-dim); line-height:1.7; padding:16px 20px;
+    background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);}
+  footer b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="breath-mark"></div>
+      <div><p class="eyebrow">Jony Respira · Tráfico Meta Ads</p><h1 class="display">Reporte de cierre · Eventos hasta el 5 de septiembre</h1></div>
+    </div>
+    <div class="meta-info">
+      <span><span id="live-dot"></span><span id="live-label">cargando…</span></span>
+      <span id="updated-label">—</span>
+      <span><a href="/">← Volver al dashboard en vivo</a></span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <span>Campañas de venta de los eventos ya realizados: CDMX 16 Ago, MTY 23 Ago, Medellín 29 Ago, Bogotá 30 Ago y Puebla 5 Sept.</span>
+    <div class="fx-wrap">
+      <label style="display:flex; align-items:center; gap:6px;">TC MXN→USD <input type="number" id="fx-mxn" value="17.2" step="0.1" min="1"></label>
+      <label style="display:flex; align-items:center; gap:6px;">TC COP→USD <input type="number" id="fx-cop" value="3200" step="10" min="100"></label>
+      <button class="btn" onclick="loadData()">↻ Actualizar</button>
+    </div>
+  </div>
+
+  <div class="kpis-resumen">
+    <div class="kpi usd"><div class="kpi-text"><div class="label">Inversión total</div><div class="value" id="k-spend">—</div><div class="sub" id="k-spend-sub">gasto en Meta Ads, USD</div></div><div class="icon-badge">💰</div></div>
+    <div class="kpi roas"><div class="kpi-text"><div class="label">Ventas totales</div><div class="value" id="k-sales">—</div><div class="sub">ventas de boletos en GHL, USD</div></div><div class="icon-badge">💵</div></div>
+    <div class="kpi roas"><div class="kpi-text"><div class="label">ROAS cruzado</div><div class="value" id="k-roas">—</div><div class="sub" id="k-roas-sub">ventas ÷ inversión</div></div><div class="icon-badge">🎯</div></div>
+    <div class="kpi"><div class="kpi-text"><div class="label">Ganancia sobre pauta</div><div class="value" id="k-profit">—</div><div class="sub">ventas − inversión, USD</div></div><div class="icon-badge">📈</div></div>
+    <div class="kpi"><div class="kpi-text"><div class="label">Eventos realizados</div><div class="value" id="k-events">—</div><div class="sub" id="k-events-sub">—</div></div><div class="icon-badge">📅</div></div>
+    <div class="kpi roas"><div class="kpi-text"><div class="label">Entradas vendidas</div><div class="value" id="k-entradas">—</div><div class="sub" id="k-orders">—</div></div><div class="icon-badge">🎟️</div></div>
+    <div class="kpi usd"><div class="kpi-text"><div class="label">CAC promedio</div><div class="value" id="k-cac">—</div><div class="sub" id="k-cac-sub">costo por entrada · objetivo &lt;$21</div></div><div class="icon-badge">📉</div></div>
+    <div class="kpi"><div class="kpi-text"><div class="label">Ticket promedio</div><div class="value" id="k-ticket">—</div><div class="sub">por entrada, USD</div></div><div class="icon-badge">🧾</div></div>
+  </div>
+  <p class="resumen-note" id="resumen-note">Cargando datos de Meta y GoHighLevel…</p>
+
+  <div class="panel">
+    <h2>📊 Inversión vs. ventas por evento</h2>
+    <p class="desc">Barras en USD · el número arriba de cada par es el ROAS del evento</p>
+    <div class="chart-wrap"><canvas id="eventsChart" height="110"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>🎟️ Detalle por evento</h2>
+    <p class="desc">Inversión = todo lo gastado en la(s) campaña(s) del evento. Ventas y entradas = todas las órdenes pagadas del producto del evento en GHL.</p>
+    <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>Evento</th><th>Pauta activa</th><th class="num">Inversión (USD)</th><th class="num">Ventas (moneda local)</th>
+        <th class="num">Ventas (USD)</th><th class="num">Órdenes</th><th class="num">Entradas</th><th class="num">CAC</th><th class="num">ROAS</th>
+      </tr></thead>
+      <tbody id="events-table"></tbody>
+      <tfoot id="events-total"></tfoot>
+    </table>
+    </div>
+  </div>
+
+  <footer>
+    <b>Cómo se calcula.</b> La inversión sale de Meta Ads (gasto diario de cada campaña). Las ventas y entradas salen de las órdenes
+    <b>pagadas</b> en GoHighLevel, agrupadas por producto del evento; se excluyen las compras de prueba internas.
+    El número de entradas por orden se estima a partir del monto (precio base, descuentos y Meet &amp; Greet), igual que en el dashboard en vivo.
+    El ROAS es <b>cruzado</b>: compara todas las ventas del evento contra la inversión en Meta, sin importar si cada venta vino de un anuncio.
+    Las ventas en MXN y COP se pasan a USD con los tipos de cambio de arriba.
+  </footer>
+</div>
+
+<script>
+// ============================================================================
+// EVENTOS DEL REPORTE — mismos IDs de campaña y palabras clave que el
+// dashboard en vivo (/index.html). Solo los eventos ya realizados hasta el
+// 5 de septiembre.
+// ============================================================================
+const EVENTS = [
+  { id:'cdmx16ago',     label:'16 Ago · CDMX',     currency:'MXN', eventDate:'2026-08-16', matchKeywords:['cdmx','16 agosto'],
+    campaigns:[{ id:'120257677827110386', name:'CDMX16AGO_Ventas_TesteoOleada1' }] },
+  { id:'mty23ago',      label:'23 Ago · MTY',      currency:'MXN', eventDate:'2026-08-23', matchKeywords:['mty','23 agosto'],
+    campaigns:[{ id:'120258012257390386', name:'MTY23AGO_Ventas_TesteoOleada1' }] },
+  { id:'medellin29ago', label:'29 Ago · Medellín', currency:'COP', eventDate:'2026-08-29', matchKeywords:['medellin','29 agosto'],
+    campaigns:[{ id:'120258063523740386', name:'MEDELLIN29AGO_Ventas_TesteoOleada1' }] },
+  { id:'bogota30ago',   label:'30 Ago · Bogotá',   currency:'COP', eventDate:'2026-08-30', matchKeywords:['bogota','30 agosto'],
+    campaigns:[{ id:'120258170319240386', name:'BOG30AGO_Ventas_TesteoOleada1' }] },
+  { id:'puebla5sept',   label:'5 Sept · Puebla',   currency:'MXN', eventDate:'2026-09-05', matchKeywords:['puebla','5 sept'],
+    campaigns:[{ id:'120258170702760386', name:'PUEBLA5SEPT_Ventas_TesteoOleada1' }] },
+];
+const GHL_LOCATION_ID = 'JevcH97yOMXW9tCaKWpT';
+const SALES_SINCE = '2026-06-15';
+const SALES_UNTIL = '2026-09-06';
+const ALL_CAMPAIGN_IDS = EVENTS.flatMap(e => e.campaigns.map(c => c.id));
+
+let store = { spend:null, products:null };
+let eventsChartRef;
+
+function fxFor(ev){ return ev.currency === 'COP' ? parseFloat(document.getElementById('fx-cop').value)||3200 : parseFloat(document.getElementById('fx-mxn').value)||17.2; }
+function fmtUSD(v){ return '$'+v.toLocaleString('en-US',{maximumFractionDigits:0}); }
+function fmtLocal(v, currency){ return '$'+v.toLocaleString('es-MX',{maximumFractionDigits:0})+' '+currency; }
+function fmtDay(d){ return d.toLocaleDateString('es-MX',{day:'numeric', month:'short'}); }
+
+function semaforoCAC(cac){
+  if(!cac || cac<=0) return null;
+  if(cac <= 21) return { color:'#3ddc97', tag:'🟢 Bien', cls:'good' };
+  if(cac <= 26.25) return { color:'#ffd166', tag:'🟡 Regular', cls:'mid' };
+  return { color:'#ff6b6b', tag:'🔴 Alto', cls:'bad' };
+}
+
+// Ignora acentos y emojis: "🇨🇴 Respiracion Bogotá" casa con 'bogota'.
+function normalize(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function matchesEvent(productName, ev){
+  const text = normalize(productName);
+  return ev.matchKeywords.every(kw => text.includes(kw));
+}
+
+async function loadData(){
+  const dot=document.getElementById('live-dot'), label=document.getElementById('live-label');
+  dot.className=''; label.textContent='conectando…';
+
+  const [spendS, ghlS] = await Promise.allSettled([
+    fetch(`/api/meta-spend-jr?campaignIds=${ALL_CAMPAIGN_IDS.join(',')}`).then(r=>r.json()),
+    fetch(`/api/ghl-history-jr?locationId=${GHL_LOCATION_ID}&since=${SALES_SINCE}&until=${SALES_UNTIL}`).then(r=>r.json()),
+  ]);
+  const metaOk = spendS.status==='fulfilled' && !spendS.value?.error;
+  const ghlOk = ghlS.status==='fulfilled' && !ghlS.value?.error;
+  if(metaOk) store.spend = spendS.value;
+  if(ghlOk) store.products = ghlS.value.products || [];
+
+  if(metaOk && ghlOk){ dot.className='ok'; label.textContent='conectado en vivo (GHL + Meta)'; }
+  else if(metaOk){ dot.className='off'; label.textContent='GHL no respondió — reintenta con ↻ Actualizar'; }
+  else if(ghlOk){ dot.className='off'; label.textContent='Meta no respondió — reintenta con ↻ Actualizar'; }
+  else { dot.className='off'; label.textContent='error al conectar — reintenta con ↻ Actualizar'; }
+  document.getElementById('updated-label').textContent = 'Actualizado: ' + new Date().toLocaleString('es-MX');
+
+  render();
+}
+
+function computeRows(){
+  return EVENTS.map(ev=>{
+    const fx = fxFor(ev);
+    let spend = 0, firstDay = null, lastDay = null;
+    ev.campaigns.forEach(c=>{
+      Object.entries(store.spend?.[c.id]?.daily || {}).forEach(([day, v])=>{
+        if(!(v.spend > 0)) return;
+        spend += v.spend;
+        const d = new Date(day + ' 00:00:00');
+        if(!firstDay || d < firstDay) firstDay = d;
+        if(!lastDay || d > lastDay) lastDay = d;
+      });
+    });
+    const products = (store.products || []).filter(p => matchesEvent(p.name, ev) && p.currency === ev.currency);
+    const salesLocal = products.reduce((a,p)=>a+p.amount, 0);
+    const orders = products.reduce((a,p)=>a+p.orders, 0);
+    const entradas = products.reduce((a,p)=>a+p.entradas, 0);
+    const salesUSD = salesLocal / fx;
+    return { ev, spend, firstDay, lastDay, salesLocal, salesUSD, orders, entradas,
+      roas: spend>0 ? salesUSD/spend : 0, cac: entradas>0 ? spend/entradas : 0 };
+  });
+}
+
+function render(){
+  if(!store.spend || !store.products) return;
+  const rows = computeRows();
+
+  const spend = rows.reduce((a,r)=>a+r.spend,0);
+  const salesUSD = rows.reduce((a,r)=>a+r.salesUSD,0);
+  const entradas = rows.reduce((a,r)=>a+r.entradas,0);
+  const orders = rows.reduce((a,r)=>a+r.orders,0);
+  const roas = spend>0 ? salesUSD/spend : 0;
+  const cac = entradas>0 ? spend/entradas : 0;
+  const firstDay = rows.map(r=>r.firstDay).filter(Boolean).sort((a,b)=>a-b)[0];
+  const lastDay = rows.map(r=>r.lastDay).filter(Boolean).sort((a,b)=>b-a)[0];
+
+  document.getElementById('k-spend').textContent = fmtUSD(spend)+' USD';
+  document.getElementById('k-spend-sub').textContent = 'gasto en Meta Ads, '+fmtDay(firstDay)+' → '+fmtDay(lastDay);
+  document.getElementById('k-sales').textContent = fmtUSD(salesUSD)+' USD';
+  document.getElementById('k-roas').textContent = roas.toFixed(2)+'x';
+  document.getElementById('k-roas-sub').textContent = 'por cada $1 invertido volvieron $'+roas.toFixed(2);
+  const profit = salesUSD - spend;
+  const profitEl = document.getElementById('k-profit');
+  profitEl.textContent = (profit<0?'-':'')+fmtUSD(Math.abs(profit))+' USD';
+  profitEl.style.color = profit>=0 ? 'var(--good)' : 'var(--bad)';
+  document.getElementById('k-events').textContent = rows.length;
+  document.getElementById('k-events-sub').textContent = EVENTS.map(e=>e.label.split(' · ')[1]).join(', ');
+  document.getElementById('k-entradas').textContent = entradas.toLocaleString('es-MX');
+  document.getElementById('k-orders').textContent = orders.toLocaleString('es-MX')+' órdenes pagadas';
+  const cacEl = document.getElementById('k-cac');
+  cacEl.textContent = '$'+cac.toFixed(2)+' USD';
+  const sem = semaforoCAC(cac);
+  cacEl.style.color = sem ? sem.color : '';
+  document.getElementById('k-cac-sub').textContent = sem ? (sem.tag+' · objetivo <$21') : 'costo por entrada · objetivo <$21';
+  document.getElementById('k-ticket').textContent = entradas>0 ? fmtUSD(salesUSD/entradas)+' USD' : '—';
+
+  document.getElementById('resumen-note').innerHTML =
+    `Pauta del <b>${fmtDay(firstDay)}</b> al <b>${fmtDay(lastDay)}</b> en ${rows.length} eventos. ` +
+    `Se invirtieron <b>${fmtUSD(spend)} USD</b> y se vendieron <b>${fmtUSD(salesUSD)} USD</b> en ${entradas.toLocaleString('es-MX')} entradas: ` +
+    `<b>${roas.toFixed(2)}x</b> de retorno sobre la inversión en Meta. MXN y COP convertidos a USD con los tipos de cambio de arriba.`;
+
+  document.getElementById('events-table').innerHTML = rows.map(r=>{
+    const s = semaforoCAC(r.cac);
+    const roasCls = r.roas>=3 ? 'good' : (r.roas>=1.5 ? 'mid' : 'bad');
+    return `<tr>
+      <td><b>${r.ev.label}</b><span class="small">${r.ev.campaigns.map(c=>c.name).join(', ')}</span></td>
+      <td>${r.firstDay ? fmtDay(r.firstDay)+' → '+fmtDay(r.lastDay) : '—'}</td>
+      <td class="num">${fmtUSD(r.spend)}</td>
+      <td class="num">${fmtLocal(r.salesLocal, r.ev.currency)}</td>
+      <td class="num">${fmtUSD(r.salesUSD)}</td>
+      <td class="num">${r.orders}</td>
+      <td class="num">${r.entradas}</td>
+      <td class="num" style="color:${s?s.color:''}">${r.entradas>0 ? '$'+r.cac.toFixed(2) : '—'}</td>
+      <td class="num"><span class="pill ${roasCls}">${r.roas.toFixed(2)}x</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('events-total').innerHTML = `<tr>
+    <td>Total</td><td>${fmtDay(firstDay)} → ${fmtDay(lastDay)}</td>
+    <td class="num">${fmtUSD(spend)}</td><td class="num">—</td><td class="num">${fmtUSD(salesUSD)}</td>
+    <td class="num">${orders}</td><td class="num">${entradas}</td>
+    <td class="num">$${cac.toFixed(2)}</td><td class="num">${roas.toFixed(2)}x</td>
+  </tr>`;
+
+  renderChart(rows);
+}
+
+function renderChart(rows){
+  if(eventsChartRef) eventsChartRef.destroy();
+  eventsChartRef = new Chart(document.getElementById('eventsChart'), {
+    type:'bar',
+    data:{ labels: rows.map(r=>r.ev.label), datasets:[
+      {label:'Inversión Meta (USD)', data: rows.map(r=>Math.round(r.spend)), backgroundColor:'#4d9fffcc', borderRadius:6},
+      {label:'Ventas (USD)', data: rows.map(r=>Math.round(r.salesUSD)), backgroundColor:'#00C6DAcc', borderRadius:6},
+    ]},
+    options:{ responsive:true, interaction:{mode:'index',intersect:false},
+      layout:{padding:{top:22}},
+      plugins:{ legend:{labels:{color:'#A3A2A4'}},
+        tooltip:{callbacks:{
+          label:(item)=>item.dataset.label+': $'+item.raw.toLocaleString('en-US'),
+          afterBody:(items)=>{ const r=rows[items[0].dataIndex]; return 'ROAS: '+r.roas.toFixed(2)+'x · Entradas: '+r.entradas; }
+        }} },
+      scales:{ x:{ticks:{color:'#A3A2A4'}, grid:{color:'#ffffff0d'}},
+               y:{beginAtZero:true, ticks:{color:'#A3A2A4', callback:v=>'$'+v.toLocaleString('en-US')}, grid:{color:'#ffffff0d'}} } },
+    plugins:[{
+      id:'roasLabels',
+      afterDatasetsDraw(chart){
+        const {ctx} = chart; const a = chart.getDatasetMeta(0), b = chart.getDatasetMeta(1);
+        ctx.save(); ctx.fillStyle='#F1F2F2'; ctx.font='700 11px Inter, sans-serif'; ctx.textAlign='center';
+        rows.forEach((r,i)=>{
+          const x = (a.data[i].x + b.data[i].x)/2;
+          const y = Math.min(a.data[i].y, b.data[i].y) - 8;
+          ctx.fillText(r.roas.toFixed(2)+'x', x, y);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+['fx-mxn','fx-cop'].forEach(id=>document.getElementById(id).addEventListener('input', render));
+loadData();
+</script>
+</body>
+</html>
